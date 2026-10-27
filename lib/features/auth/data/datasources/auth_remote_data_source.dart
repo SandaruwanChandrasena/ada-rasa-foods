@@ -8,12 +8,10 @@ import '../models/app_user_model.dart';
 // The only auth file that calls Firebase and Google.
 class AuthRemoteDataSource {
   AuthRemoteDataSource({
-    required FirebaseAuth auth,
-    required FirebaseFirestore firestore,
-    required GoogleSignIn googleSignIn,
-  })  : _auth = auth,
-        _firestore = firestore,
-        _googleSignIn = googleSignIn;
+    required this._auth,
+    required this._firestore,
+    required this._googleSignIn,
+  });
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
