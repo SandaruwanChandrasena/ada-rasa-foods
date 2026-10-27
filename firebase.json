@@ -1,0 +1,21 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "ada-rasa-foods",
+          "appId": "1:523288591037:android:9aff762dfb9b605a80d5d4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "ada-rasa-foods",
+          "configurations": {
+            "android": "1:523288591037:android:9aff762dfb9b605a80d5d4"
+          }
+        }
+      }
+    }
+  }
+}
