@@ -44,11 +44,12 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Kotlin compiler temp files
+.kotlin/
 
 # Firebase config (keep private)
 android/app/google-services.json
 lib/firebase_options.dart
-
 
 # Node (Firebase CLI local install)
 node_modules/
