@@ -57,6 +57,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   # A fake Firestore in memory, so tests run without internet.
   fake_cloud_firestore: ^4.5.0
+  # Cubit tests (blocTest) and fake repositories in tests.
+  bloc_test: ^10.0.0
+  mocktail: ^1.0.5
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
