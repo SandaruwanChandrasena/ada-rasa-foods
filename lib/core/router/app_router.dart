@@ -7,6 +7,7 @@ import '../../features/auth/domain/entities/user_role.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../widgets/role_home_placeholder.dart';
 
@@ -15,6 +16,7 @@ class AppRoutes {
 
   static const String splash = '/splash';
   static const String login = '/login';
+  static const String signUp = '/sign-up';
   static const String customer = '/customer';
   static const String restaurant = '/restaurant';
   static const String admin = '/admin';
@@ -43,8 +45,11 @@ GoRouter createRouter(AuthCubit authCubit) {
       return switch (auth.status) {
         AuthStatus.unknown =>
           location == AppRoutes.splash ? null : AppRoutes.splash,
+        // Signed-out users may only see sign in and sign up.
         AuthStatus.unauthenticated =>
-          location == AppRoutes.login ? null : AppRoutes.login,
+          (location == AppRoutes.login || location == AppRoutes.signUp)
+              ? null
+              : AppRoutes.login,
         AuthStatus.authenticated => _homeRedirect(auth, location),
       };
     },
@@ -56,6 +61,10 @@ GoRouter createRouter(AuthCubit authCubit) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signUp,
+        builder: (context, state) => const SignUpScreen(),
       ),
       GoRoute(
         path: AppRoutes.customer,

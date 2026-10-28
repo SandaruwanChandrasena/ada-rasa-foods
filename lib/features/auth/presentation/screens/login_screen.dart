@@ -1,11 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/google_sign_in_button.dart';
 
-// One screen for sign in and sign up. The router opens the home after login.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,16 +16,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _isRegister = false;
   bool _hidePassword = true;
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -35,30 +33,22 @@ class _LoginScreenState extends State<LoginScreen> {
     if (form == null || !form.validate()) return;
 
     FocusScope.of(context).unfocus();
-    final cubit = context.read<AuthCubit>();
-
-    if (_isRegister) {
-      cubit.register(
-        name: _nameController.text,
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-    } else {
-      cubit.signInWithEmail(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-    }
+    context.read<AuthCubit>().signInWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
-      // Show a message only when a new error arrives.
       listenWhen: (previous, current) =>
           current.errorMessage != null &&
           current.errorMessage != previous.errorMessage,
       listener: (context, state) {
+        // The sign up screen shows its own errors when it is on top.
+        if (ModalRoute.of(context)?.isCurrent != true) return;
+
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
@@ -89,30 +79,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _isRegister
-                              ? 'Create your account'
-                              : "Sign in to order today's taste",
+                          "Sign in to order today's taste",
                           textAlign: TextAlign.center,
                           style: textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 32),
-                        if (_isRegister) ...[
-                          TextFormField(
-                            controller: _nameController,
-                            enabled: !isLoading,
-                            textCapitalization: TextCapitalization.words,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Name',
-                              prefixIcon: Icon(Icons.person_outline),
-                            ),
-                            validator: (value) =>
-                                (value == null || value.trim().isEmpty)
-                                    ? 'Please enter your name.'
-                                    : null,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
                         TextFormField(
                           controller: _emailController,
                           enabled: !isLoading,
@@ -157,8 +128,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           validator: (value) =>
-                              (value == null || value.length < 6)
-                                  ? 'Use at least 6 characters.'
+                              (value == null || value.isEmpty)
+                                  ? 'Please enter your password.'
                                   : null,
                         ),
                         const SizedBox(height: 24),
@@ -172,18 +143,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : Text(_isRegister ? 'Create account' : 'Sign in'),
+                              : const Text('Sign in'),
                         ),
                         const SizedBox(height: 8),
                         TextButton(
                           onPressed: isLoading
                               ? null
-                              : () => setState(() => _isRegister = !_isRegister),
-                          child: Text(
-                            _isRegister
-                                ? 'Already have an account? Sign in'
-                                : 'New here? Create an account',
-                          ),
+                              : () => context.push(AppRoutes.signUp),
+                          child: const Text('New here? Create an account'),
                         ),
                         const SizedBox(height: 16),
                         const Row(
