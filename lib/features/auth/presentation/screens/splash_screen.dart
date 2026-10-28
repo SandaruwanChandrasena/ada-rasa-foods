@@ -6,17 +6,13 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.restaurant, size: 72, color: colors.primary),
-            const SizedBox(height: 16),
-            Text('Ada Rasa', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 24),
+            Image.asset('assets/images/logo.png', width: 160, height: 160),
+            const SizedBox(height: 32),
             const CircularProgressIndicator(),
           ],
         ),

@@ -68,21 +68,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Replaced by the logo image in Part 4.
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: colors.primary,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          Icons.restaurant_menu,
-                          size: 40,
-                          color: colors.onPrimary,
-                        ),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 96,
+                        height: 96,
                       ),
                     ),
                     const SizedBox(height: 24),
