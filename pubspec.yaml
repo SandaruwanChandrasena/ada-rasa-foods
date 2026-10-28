@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_core: ^5.1.0
   flutter_bloc: ^9.1.1
-  equatable: ^3.0.0
+  equatable: ^2.1.0
   go_router: ^18.1.1
   get_it: ^9.3.0
   material_ui: ^1.2.0
@@ -55,6 +55,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  # A fake Firestore in memory, so tests run without internet.
+  fake_cloud_firestore: ^4.5.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

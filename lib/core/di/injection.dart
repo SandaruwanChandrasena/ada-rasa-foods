@@ -9,6 +9,10 @@ import '../../features/auth/data/auth_repository_impl.dart';
 import '../../features/auth/domain/auth_repository.dart';
 import '../../features/auth/presentation/auth_cubit.dart';
 import '../../features/auth/presentation/forgot_password_cubit.dart';
+import '../../features/menu/data/menu_repository_impl.dart';
+import '../../features/menu/domain/menu_repository.dart';
+import '../../features/restaurants/data/restaurant_repository_impl.dart';
+import '../../features/restaurants/domain/restaurant_repository.dart';
 import '../router/app_router.dart';
 
 // sl = service locator. One place that creates and connects everything.
@@ -36,6 +40,12 @@ Future<void> initDependencies() async {
 
   // Factory: a new cubit each time the pop-up opens.
   sl.registerFactory<ForgotPasswordCubit>(() => ForgotPasswordCubit(sl()));
+
+  // Restaurants and menu
+  sl.registerLazySingleton<RestaurantRepository>(
+    () => RestaurantRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<MenuRepository>(() => MenuRepositoryImpl(sl()));
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
