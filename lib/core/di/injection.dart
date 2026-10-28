@@ -8,6 +8,7 @@ import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/auth/presentation/cubit/forgot_password_cubit.dart';
 import '../router/app_router.dart';
 
 // sl = service locator. One place that creates and connects everything.
@@ -32,6 +33,9 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
   sl.registerLazySingleton<AuthCubit>(() => AuthCubit(sl()));
+
+  // Factory: a new cubit each time the pop-up opens.
+  sl.registerFactory<ForgotPasswordCubit>(() => ForgotPasswordCubit(sl()));
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
