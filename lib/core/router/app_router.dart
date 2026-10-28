@@ -10,6 +10,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
+import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../widgets/role_home_placeholder.dart';
 
 class AppRoutes {
@@ -77,11 +78,8 @@ GoRouter createRouter(AuthCubit authCubit) {
         routes: [
           GoRoute(
             path: 'restaurant/:id',
-            // Temporary page. The real restaurant page comes in Part 3.
-            builder: (context, state) => RoleHomePlaceholder(
-              title: 'Restaurant page',
-              nextStep: 'Restaurant id: ${state.pathParameters['id']}',
-            ),
+            builder: (context, state) =>
+                RestaurantPage(restaurantId: state.pathParameters['id']!),
           ),
         ],
       ),
