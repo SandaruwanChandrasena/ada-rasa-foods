@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../domain/entities/app_user.dart';
-import '../../domain/entities/user_role.dart';
+import '../domain/app_user.dart';
+import '../domain/user_role.dart';
 
 class AppUserModel {
   const AppUserModel({

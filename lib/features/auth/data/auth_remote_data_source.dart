@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../../domain/entities/user_role.dart';
-import '../models/app_user_model.dart';
+import '../domain/user_role.dart';
+import 'app_user_model.dart';
 
 // The only auth file that calls Firebase and Google.
 class AuthRemoteDataSource {

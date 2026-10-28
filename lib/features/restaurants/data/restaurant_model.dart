@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../domain/entities/restaurant.dart';
+import '../domain/restaurant.dart';
 
 // Turns a restaurants/{id} document into a Restaurant.
 class RestaurantModel {

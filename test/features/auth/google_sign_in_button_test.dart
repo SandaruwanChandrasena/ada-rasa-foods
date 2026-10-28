@@ -1,4 +1,4 @@
-import 'package:ada_rasa_foods/features/auth/presentation/widgets/google_sign_in_button.dart';
+import 'package:ada_rasa_foods/features/auth/presentation/google_sign_in_button.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 

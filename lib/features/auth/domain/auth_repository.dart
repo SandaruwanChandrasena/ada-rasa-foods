@@ -1,4 +1,4 @@
-import '../entities/app_user.dart';
+import 'app_user.dart';
 
 // All methods throw AuthFailure on error.
 abstract class AuthRepository {

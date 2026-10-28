@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../../../core/di/injection.dart';
-import '../cubit/forgot_password_cubit.dart';
-import '../cubit/forgot_password_state.dart';
+import '../../../core/di/injection.dart';
+import 'forgot_password_cubit.dart';
+import 'forgot_password_state.dart';
 
 class ForgotPasswordDialog extends StatefulWidget {
   const ForgotPasswordDialog({super.key, this.initialEmail = ''});

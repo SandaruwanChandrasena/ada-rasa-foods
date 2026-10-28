@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../../core/errors/firestore_errors.dart';
-import '../../domain/entities/restaurant.dart';
-import '../../domain/repositories/restaurant_repository.dart';
-import '../models/restaurant_model.dart';
+import '../../../core/errors/firestore_errors.dart';
+import '../domain/restaurant.dart';
+import '../domain/restaurant_repository.dart';
+import 'restaurant_model.dart';
 
 class RestaurantRepositoryImpl implements RestaurantRepository {
   RestaurantRepositoryImpl(this._firestore);

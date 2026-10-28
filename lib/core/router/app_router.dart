@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/domain/entities/user_role.dart';
-import '../../features/auth/presentation/cubit/auth_cubit.dart';
-import '../../features/auth/presentation/cubit/auth_state.dart';
-import '../../features/auth/presentation/screens/login_screen.dart';
-import '../../features/auth/presentation/screens/sign_up_screen.dart';
-import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/auth/domain/user_role.dart';
+import '../../features/auth/presentation/auth_cubit.dart';
+import '../../features/auth/presentation/auth_state.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/sign_up_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
 import '../widgets/role_home_placeholder.dart';
 
 class AppRoutes {

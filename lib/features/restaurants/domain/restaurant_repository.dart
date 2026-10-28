@@ -1,4 +1,4 @@
-import '../entities/restaurant.dart';
+import 'restaurant.dart';
 
 // Streams send live updates. They report errors as DataFailure.
 abstract class RestaurantRepository {

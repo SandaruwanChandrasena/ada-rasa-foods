@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../domain/entities/app_user.dart';
+import '../domain/app_user.dart';
 
 enum AuthStatus { unknown, unauthenticated, authenticated }
 

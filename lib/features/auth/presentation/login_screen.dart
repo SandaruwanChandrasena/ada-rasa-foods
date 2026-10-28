@@ -2,12 +2,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../../../core/router/app_router.dart';
-import '../cubit/auth_cubit.dart';
-import '../cubit/auth_state.dart';
-import '../widgets/auth_header.dart';
-import '../widgets/forgot_password_dialog.dart';
-import '../widgets/google_sign_in_button.dart';
+import '../../../core/router/app_router.dart';
+import 'auth_cubit.dart';
+import 'auth_state.dart';
+import 'auth_header.dart';
+import 'forgot_password_dialog.dart';
+import 'google_sign_in_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

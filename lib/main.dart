@@ -7,7 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'features/auth/presentation/auth_cubit.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {

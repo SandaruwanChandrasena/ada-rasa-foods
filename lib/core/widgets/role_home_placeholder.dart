@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/auth/presentation/auth_cubit.dart';
 
 // Temporary home for each role, until the real home screens are built.
 class RoleHomePlaceholder extends StatelessWidget {
