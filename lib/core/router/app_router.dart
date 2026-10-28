@@ -9,6 +9,7 @@ import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../widgets/role_home_placeholder.dart';
 
 class AppRoutes {
@@ -21,6 +22,10 @@ class AppRoutes {
   static const String restaurant = '/restaurant';
   static const String admin = '/admin';
   static const String rider = '/rider';
+
+  // Restaurant page inside the customer area (CUS-2).
+  static String restaurantPage(String restaurantId) =>
+      '$customer/restaurant/$restaurantId';
 
   // The home path for each role (AUTH-2).
   static String homeFor(UserRole role) {
@@ -68,10 +73,17 @@ GoRouter createRouter(AuthCubit authCubit) {
       ),
       GoRoute(
         path: AppRoutes.customer,
-        builder: (context, state) => const RoleHomePlaceholder(
-          title: 'Customer home',
-          nextStep: 'Next: restaurant list, search, and categories (CUS-1).',
-        ),
+        builder: (context, state) => const CustomerHomeScreen(),
+        routes: [
+          GoRoute(
+            path: 'restaurant/:id',
+            // Temporary page. The real restaurant page comes in Part 3.
+            builder: (context, state) => RoleHomePlaceholder(
+              title: 'Restaurant page',
+              nextStep: 'Restaurant id: ${state.pathParameters['id']}',
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.restaurant,

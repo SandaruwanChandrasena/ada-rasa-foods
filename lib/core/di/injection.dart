@@ -13,6 +13,7 @@ import '../../features/menu/data/menu_repository_impl.dart';
 import '../../features/menu/domain/menu_repository.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
 import '../../features/restaurants/domain/restaurant_repository.dart';
+import '../../features/restaurants/presentation/restaurant_list_cubit.dart';
 import '../router/app_router.dart';
 
 // sl = service locator. One place that creates and connects everything.
@@ -46,6 +47,9 @@ Future<void> initDependencies() async {
     () => RestaurantRepositoryImpl(sl()),
   );
   sl.registerLazySingleton<MenuRepository>(() => MenuRepositoryImpl(sl()));
+
+  // Factory: a new cubit each time the customer home opens.
+  sl.registerFactory<RestaurantListCubit>(() => RestaurantListCubit(sl()));
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
