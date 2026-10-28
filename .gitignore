@@ -56,5 +56,5 @@ node_modules/
 /package.json
 /package-lock.json
 
-# Seed script secret key (never push)
-tools/seed/serviceAccountKey.json
+# Seed script stays on my laptop only (it has demo passwords and the secret key)
+tools/seed/
