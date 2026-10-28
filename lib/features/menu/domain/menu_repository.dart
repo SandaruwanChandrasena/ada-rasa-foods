@@ -1,4 +1,4 @@
-import '../entities/dish.dart';
+import 'dish.dart';
 
 // Streams send live updates. They report errors as DataFailure.
 abstract class MenuRepository {

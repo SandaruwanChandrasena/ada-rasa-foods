@@ -1,4 +1,4 @@
-import '../../domain/entities/dish.dart';
+import '../domain/dish.dart';
 
 // Turns a restaurants/{id}/menuItems/{itemId} document into a Dish.
 class DishModel {

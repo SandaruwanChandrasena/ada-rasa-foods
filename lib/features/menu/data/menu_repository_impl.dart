@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../../core/errors/firestore_errors.dart';
-import '../../domain/entities/dish.dart';
-import '../../domain/repositories/menu_repository.dart';
-import '../models/dish_model.dart';
+import '../../../core/errors/firestore_errors.dart';
+import '../domain/dish.dart';
+import '../domain/menu_repository.dart';
+import 'dish_model.dart';
 
 class MenuRepositoryImpl implements MenuRepository {
   MenuRepositoryImpl(this._firestore);
