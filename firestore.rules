@@ -11,11 +11,39 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // The first admin is set by hand in the Firebase console.
+    // The seed script creates the first admin.
     function isAdmin() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isRestaurantOwner(restaurantId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/restaurants/$(restaurantId))
+        && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
+    }
+
+    function isValidRestaurant(data) {
+      return data.keys().hasOnly(['name', 'cuisine', 'ownerId', 'imageUrl', 'address', 'location', 'isOpen', 'isActive', 'createdAt'])
+        && data.name is string && data.name.size() > 0
+        && data.cuisine is string
+        && data.ownerId is string && data.ownerId.size() > 0
+        && data.imageUrl is string
+        && data.address is string
+        && data.location is latlng
+        && data.isOpen is bool
+        && data.isActive is bool;
+    }
+
+    function isValidMenuItem(data) {
+      return data.keys().hasOnly(['name', 'description', 'price', 'imageUrl', 'category', 'available'])
+        && data.name is string && data.name.size() > 0
+        && data.description is string
+        && data.price is int && data.price > 0
+        && data.imageUrl is string
+        && data.category is string && data.category.size() > 0
+        && data.available is bool;
     }
 
     match /users/{uid} {
@@ -34,6 +62,36 @@ service cloud.firestore {
         || isAdmin();
 
       allow delete: if false;
+    }
+
+    match /restaurants/{restaurantId} {
+      // The app shows only active restaurants to customers.
+      allow read: if isSignedIn();
+
+      // Only the admin creates a restaurant and sets its owner (ADM-5).
+      allow create: if isAdmin()
+        && isValidRestaurant(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+
+      // Admin can change everything except createdAt. The owner can change only isOpen and imageUrl.
+      allow update: if isValidRestaurant(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (isAdmin()
+          || (isRestaurantOwner(restaurantId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOpen', 'imageUrl'])));
+
+      // Turn a restaurant off with isActive instead (ADM-3).
+      allow delete: if false;
+
+      match /menuItems/{itemId} {
+        allow read: if isSignedIn();
+
+        // Only the restaurant owner manages the menu (RES-3).
+        allow create, update: if isRestaurantOwner(restaurantId)
+          && isValidMenuItem(request.resource.data);
+
+        allow delete: if isRestaurantOwner(restaurantId);
+      }
     }
 
     // Other collections stay blocked until we add their rules.
