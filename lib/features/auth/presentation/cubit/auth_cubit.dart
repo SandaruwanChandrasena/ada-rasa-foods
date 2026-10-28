@@ -11,17 +11,22 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _repository;
 
   // Runs once when the app starts.
-  Future<void> checkSession() async {
+  // The splash stays for at least [minSplashTime], even if the check is fast.
+  Future<void> checkSession({Duration minSplashTime = Duration.zero}) async {
+    final minWait = Future<void>.delayed(minSplashTime);
+
+    AuthState next;
     try {
       final user = await _repository.getCurrentUser();
-      emit(
-        user == null
-            ? const AuthState.unauthenticated()
-            : AuthState.authenticated(user),
-      );
+      next = user == null
+          ? const AuthState.unauthenticated()
+          : AuthState.authenticated(user);
     } on AuthFailure catch (e) {
-      emit(AuthState.unauthenticated(errorMessage: e.message));
+      next = AuthState.unauthenticated(errorMessage: e.message);
     }
+
+    await minWait;
+    emit(next);
   }
 
   Future<void> signInWithGoogle() {

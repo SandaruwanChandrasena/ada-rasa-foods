@@ -19,7 +19,11 @@ Future<void> main() async {
   await initDependencies();
 
   // Not awaited: the splash screen shows until this finishes.
-  unawaited(sl<AuthCubit>().checkSession());
+  unawaited(
+    sl<AuthCubit>().checkSession(
+      minSplashTime: const Duration(milliseconds: 1500),
+    ),
+  );
 
   runApp(const AdaRasaApp());
 }
