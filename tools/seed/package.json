@@ -1,0 +1,14 @@
+{
+  "name": "ada-rasa-seed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Adds demo users, restaurants and menu items to Firebase.",
+  "main": "seed.js",
+  "type": "commonjs",
+  "scripts": {
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0"
+  }
+}
