@@ -19,5 +19,8 @@ abstract class AuthRepository {
     required String password,
   });
 
+  // Firebase emails a reset link to this address (AUTH-3).
+  Future<void> sendPasswordReset(String email);
+
   Future<void> signOut();
 }

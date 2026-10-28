@@ -61,6 +61,10 @@ class AuthRemoteDataSource {
     return result.user;
   }
 
+  Future<void> sendPasswordReset(String email) {
+    return _auth.sendPasswordResetEmail(email: email);
+  }
+
   // Reads users/{uid}. Creates it as a customer if it does not exist yet.
   Future<AppUserModel> getOrCreateProfile(User user, {String? name}) async {
     final doc = _users.doc(user.uid);
