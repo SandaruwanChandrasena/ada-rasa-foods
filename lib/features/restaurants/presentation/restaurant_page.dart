@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/food_image.dart';
+import '../../cart/presentation/add_to_cart_button.dart';
 import '../../menu/presentation/dish_row.dart';
 import '../domain/restaurant.dart';
 import 'restaurant_detail_cubit.dart';
@@ -120,7 +121,14 @@ class _LoadedView extends StatelessWidget {
                 for (final dish in entry.value)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: DishRow(dish: dish),
+                    child: DishRow(
+                      dish: dish,
+                      trailing: AddToCartButton(
+                        dish: dish,
+                        restaurantName: restaurant.name,
+                        enabled: restaurant.canTakeOrders && dish.available,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -182,7 +190,8 @@ class _InfoSection extends StatelessWidget {
           if (!restaurant.isOpen) ...[
             const SizedBox(height: 12),
             Text(
-              'This restaurant is closed now. You can still see the menu.',
+              'This restaurant is closed now. You can see the menu, '
+              'but you cannot add food to the cart.',
               style: textTheme.bodySmall?.copyWith(color: grey),
             ),
           ],

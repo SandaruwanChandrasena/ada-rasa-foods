@@ -5,11 +5,14 @@ import '../../../core/utils/price_format.dart';
 import '../../../core/widgets/food_image.dart';
 import '../domain/dish.dart';
 
-// One dish on the restaurant page. No Add button yet (comes with the cart).
+// One dish on the restaurant page.
 class DishRow extends StatelessWidget {
-  const DishRow({super.key, required this.dish});
+  const DishRow({super.key, required this.dish, this.trailing});
 
   final Dish dish;
+
+  // Shown next to the price, like the Add button from the cart feature.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -42,12 +45,19 @@ class DishRow extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 6),
-              Text(
-                formatPrice(dish.price),
-                style: textTheme.titleSmall?.copyWith(
-                  color: AppTheme.brandOrange,
-                  fontWeight: FontWeight.w700,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      formatPrice(dish.price),
+                      style: textTheme.titleSmall?.copyWith(
+                        color: AppTheme.brandOrange,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  ?trailing,
+                ],
               ),
             ],
           ),
