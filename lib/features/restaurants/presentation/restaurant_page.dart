@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../cart/presentation/add_to_cart_button.dart';
+import '../../cart/presentation/cart_bar.dart';
 import '../../cart/presentation/cart_icon_button.dart';
 import '../../cart/presentation/cart_problem_banner.dart';
 import '../../menu/presentation/dish_row.dart';
@@ -84,6 +85,7 @@ class _LoadedView extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
+      bottomNavigationBar: const CartBar(),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(

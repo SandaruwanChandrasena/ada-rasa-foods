@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
 import '../../auth/presentation/auth_cubit.dart';
+import '../../cart/presentation/cart_bar.dart';
 import '../../cart/presentation/cart_icon_button.dart';
 import '../../cart/presentation/cart_problem_banner.dart';
 import 'restaurant_card.dart';
@@ -95,6 +96,7 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
           );
         },
       ),
+      bottomNavigationBar: const CartBar(),
     );
   }
 
