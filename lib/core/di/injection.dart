@@ -3,12 +3,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import '../../features/auth/data/auth_remote_data_source.dart';
 import '../../features/auth/data/auth_repository_impl.dart';
 import '../../features/auth/domain/auth_repository.dart';
 import '../../features/auth/presentation/auth_cubit.dart';
 import '../../features/auth/presentation/forgot_password_cubit.dart';
+import '../../features/cart/data/cart_repository_impl.dart';
+import '../../features/cart/domain/cart_repository.dart';
+import '../../features/cart/presentation/cart_cubit.dart';
 import '../../features/menu/data/menu_repository_impl.dart';
 import '../../features/menu/domain/menu_repository.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
@@ -50,6 +54,14 @@ Future<void> initDependencies() async {
 
   // Factory: a new cubit each time the customer home opens.
   sl.registerFactory<RestaurantListCubit>(() => RestaurantListCubit(sl()));
+
+  // Cart: saved on the phone with Hive. The box opens once here.
+  await Hive.initFlutter();
+  final cartBox = await Hive.openBox<dynamic>(CartRepositoryImpl.boxName);
+  sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(cartBox));
+
+  // Singleton: the home, restaurant page, and cart screen share one cart.
+  sl.registerLazySingleton<CartCubit>(() => CartCubit(sl()));
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
