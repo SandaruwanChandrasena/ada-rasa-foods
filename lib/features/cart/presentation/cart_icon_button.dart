@@ -64,9 +64,10 @@ class _CartIconButtonState extends State<CartIconButton>
     return box.localToGlobal(box.size.center(Offset.zero));
   }
 
+  // On fast taps, let a running bounce finish so it does not jump.
   @override
   void bounce() {
-    if (mounted) _bounce.forward(from: 0);
+    if (mounted && !_bounce.isAnimating) _bounce.forward(from: 0);
   }
 
   @override

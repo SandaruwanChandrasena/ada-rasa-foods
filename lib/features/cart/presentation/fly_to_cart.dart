@@ -20,11 +20,13 @@ void registerCartTarget(CartFlyTarget target) => _targets.add(target);
 
 void unregisterCartTarget(CartFlyTarget target) => _targets.remove(target);
 
-// Most photos in the air at the same time. More taps still change the
-// cart, they just skip the animation, so the app stays smooth.
+// Fast taps: at most 4 photos in the air, and a short gap between them.
+// Extra taps still change the cart, they only skip the photo.
 const int _maxFlights = 4;
-int _flightsToCart = 0;
-int _flightsToBin = 0;
+const Duration _minGap = Duration(milliseconds: 90);
+
+final _cartFlights = _FlightLimiter();
+final _binFlights = _FlightLimiter();
 
 // One shared dustbin next to the bag, for many quick minus taps.
 OverlayEntry? _binEntry;
@@ -50,13 +52,12 @@ void flyToCart(BuildContext context, {required String imageUrl}) {
       overlay == null ||
       startBox is! RenderBox ||
       !startBox.attached ||
-      _flightsToCart >= _maxFlights) {
+      !_cartFlights.tryStart()) {
     return;
   }
 
   final (target, end) = found;
   final start = startBox.localToGlobal(startBox.size.center(Offset.zero));
-  _flightsToCart++;
 
   late final OverlayEntry entry;
   entry = OverlayEntry(
@@ -64,13 +65,13 @@ void flyToCart(BuildContext context, {required String imageUrl}) {
       imageUrl: imageUrl,
       start: start,
       end: end,
-      startSize: 56,
-      endSize: 24,
-      lift: 80,
-      duration: const Duration(milliseconds: 650),
+      startSize: 52,
+      endSize: 22,
+      lift: 70,
+      duration: const Duration(milliseconds: 550),
       onDone: () {
         entry.remove();
-        _flightsToCart--;
+        _cartFlights.finish();
         target.bounce();
       },
     ),
@@ -83,13 +84,10 @@ void flyToCart(BuildContext context, {required String imageUrl}) {
 void flyToBin(BuildContext context, {required String imageUrl}) {
   final found = _currentTarget();
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
-  if (found == null || overlay == null || _flightsToBin >= _maxFlights) {
-    return;
-  }
+  if (found == null || overlay == null || !_binFlights.tryStart()) return;
 
   final (_, bag) = found;
-  final bin = bag + const Offset(-48, 4);
-  _flightsToBin++;
+  final bin = bag + const Offset(-46, 0);
 
   // Show the bin, or keep it open if it is already there.
   if (_binEntry == null) {
@@ -115,21 +113,41 @@ void flyToBin(BuildContext context, {required String imageUrl}) {
       imageUrl: imageUrl,
       start: bag,
       end: bin,
-      startSize: 26,
-      endSize: 14,
-      lift: 36,
-      duration: const Duration(milliseconds: 450),
+      startSize: 24,
+      endSize: 12,
+      lift: 32,
+      duration: const Duration(milliseconds: 420),
       onDone: () {
         entry.remove();
-        _flightsToBin--;
+        _binFlights.finish();
         final binState = _binKey.currentState;
         binState?.shake();
         // The last photo is in, so the bin can go away.
-        if (_flightsToBin == 0) binState?.closeSoon();
+        if (_binFlights.active == 0) binState?.closeSoon();
       },
     ),
   );
   overlay.insert(entry);
+}
+
+// Counts photos in the air, and keeps a short gap between new ones.
+class _FlightLimiter {
+  int active = 0;
+  DateTime _last = DateTime.fromMillisecondsSinceEpoch(0);
+
+  bool tryStart() {
+    final now = DateTime.now();
+    if (active >= _maxFlights || now.difference(_last) < _minGap) {
+      return false;
+    }
+    active++;
+    _last = now;
+    return true;
+  }
+
+  void finish() {
+    if (active > 0) active--;
+  }
 }
 
 class _FlyingPhoto extends StatefulWidget {
@@ -169,8 +187,11 @@ class _FlyingPhotoState extends State<_FlyingPhoto>
 
   late final Animation<double> _progress = CurvedAnimation(
     parent: _controller,
-    curve: Curves.easeInOut,
+    curve: Curves.easeInOutCubic,
   );
+
+  late final Animation<double> _fade =
+      Tween<double>(begin: 1, end: 0.6).animate(_controller);
 
   @override
   void initState() {
@@ -186,35 +207,47 @@ class _FlyingPhotoState extends State<_FlyingPhoto>
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: _progress,
-        builder: (context, child) {
-          final t = _progress.value;
-          final point = Offset.lerp(widget.start, widget.end, t)!;
-          final lift = math.sin(t * math.pi) * widget.lift;
-          final size =
-              widget.startSize + (widget.endSize - widget.startSize) * t;
+    final size = widget.startSize;
+    final endScale = widget.endSize / size;
+    final travel = widget.end - widget.start;
 
-          return Stack(
-            children: [
-              Positioned(
-                left: point.dx - size / 2,
-                top: point.dy - size / 2 - lift,
-                width: size,
-                height: size,
-                child: Opacity(opacity: 1 - 0.4 * t, child: child),
+    // Placed once. Each frame only moves and scales it (no new layout).
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          Positioned(
+            left: widget.start.dx - size / 2,
+            top: widget.start.dy - size / 2,
+            width: size,
+            height: size,
+            child: AnimatedBuilder(
+              animation: _progress,
+              builder: (context, child) {
+                final t = _progress.value;
+                final lift = math.sin(t * math.pi) * widget.lift;
+                return Transform.translate(
+                  offset: Offset(travel.dx * t, travel.dy * t - lift),
+                  child: Transform.scale(
+                    scale: 1 + (endScale - 1) * t,
+                    child: child,
+                  ),
+                );
+              },
+              // Drawn once and reused on every frame.
+              child: FadeTransition(
+                opacity: _fade,
+                child: RepaintBoundary(
+                  child: ClipOval(
+                    child: FoodImage(
+                      imageUrl: widget.imageUrl,
+                      borderRadius: 0,
+                    ),
+                  ),
+                ),
               ),
-            ],
-          );
-        },
-        // Built once, not on every frame.
-        child: Material(
-          elevation: 4,
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: FoodImage(imageUrl: widget.imageUrl, borderRadius: 0),
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -231,7 +264,7 @@ class _Dustbin extends StatefulWidget {
 }
 
 class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
-  static const double _size = 34;
+  static const double _size = 36;
 
   // Grows in when shown, shrinks away when closed.
   late final AnimationController _appear = AnimationController(
@@ -239,22 +272,22 @@ class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
     duration: const Duration(milliseconds: 180),
   );
 
-  // A small left and right shake when a photo lands.
-  late final AnimationController _shake = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 280),
-  );
-
-  late final Animation<double> _turns = TweenSequence<double>([
-    TweenSequenceItem(tween: Tween(begin: 0, end: -0.04), weight: 25),
-    TweenSequenceItem(tween: Tween(begin: -0.04, end: 0.04), weight: 50),
-    TweenSequenceItem(tween: Tween(begin: 0.04, end: 0), weight: 25),
-  ]).animate(_shake);
-
   late final Animation<double> _grow = CurvedAnimation(
     parent: _appear,
     curve: Curves.easeOutBack,
   );
+
+  // A small left and right shake when a photo lands.
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
+
+  late final Animation<double> _turns = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 0, end: -0.035), weight: 25),
+    TweenSequenceItem(tween: Tween(begin: -0.035, end: 0.035), weight: 50),
+    TweenSequenceItem(tween: Tween(begin: 0.035, end: 0), weight: 25),
+  ]).animate(_shake);
 
   Timer? _closeTimer;
 
@@ -269,16 +302,17 @@ class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
     _appear.forward();
   }
 
-  void shake() => _shake.forward(from: 0);
+  // On fast taps, let a running shake finish so it does not jump.
+  void shake() {
+    if (!_shake.isAnimating) _shake.forward(from: 0);
+  }
 
   // Waits a little, so the customer sees the photo go in.
   void closeSoon() {
     _closeTimer?.cancel();
     _closeTimer = Timer(const Duration(milliseconds: 450), () async {
       await _appear.reverse();
-      if (mounted && !_appear.isAnimating && _appear.value == 0) {
-        widget.onClosed();
-      }
+      if (mounted && _appear.value == 0) widget.onClosed();
     });
   }
 
@@ -292,6 +326,8 @@ class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Stack(
       children: [
         Positioned(
@@ -304,14 +340,18 @@ class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
               scale: _grow,
               child: RotationTransition(
                 turns: _turns,
-                child: Material(
-                  color: Colors.white,
-                  elevation: 3,
-                  shape: const CircleBorder(),
+                // Same look as the bag: top bar color, bag icon color,
+                // and a red round border.
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.red.shade700, width: 1.5),
+                  ),
                   child: Icon(
                     Icons.delete_outline,
-                    size: 20,
-                    color: Colors.red.shade700,
+                    size: 22,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ),
