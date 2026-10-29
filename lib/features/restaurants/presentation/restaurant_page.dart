@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../cart/presentation/add_to_cart_button.dart';
+import '../../cart/presentation/cart_icon_button.dart';
 import '../../menu/presentation/dish_row.dart';
 import '../domain/restaurant.dart';
 import 'restaurant_detail_cubit.dart';
@@ -88,6 +89,7 @@ class _LoadedView extends StatelessWidget {
             pinned: true,
             expandedHeight: 220,
             title: Text(restaurant.name),
+            actions: const [CartIconButton()],
             flexibleSpace: FlexibleSpaceBar(
               background: FoodImage(
                 imageUrl: restaurant.imageUrl,

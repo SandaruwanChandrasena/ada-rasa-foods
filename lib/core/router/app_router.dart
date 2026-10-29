@@ -9,6 +9,7 @@ import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../widgets/role_home_placeholder.dart';
@@ -27,6 +28,9 @@ class AppRoutes {
   // Restaurant page inside the customer area (CUS-2).
   static String restaurantPage(String restaurantId) =>
       '$customer/restaurant/$restaurantId';
+
+  // Cart screen inside the customer area (CUS-3).
+  static const String cart = '$customer/cart';
 
   // The home path for each role (AUTH-2).
   static String homeFor(UserRole role) {
@@ -80,6 +84,10 @@ GoRouter createRouter(AuthCubit authCubit) {
             path: 'restaurant/:id',
             builder: (context, state) =>
                 RestaurantPage(restaurantId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'cart',
+            builder: (context, state) => const CartScreen(),
           ),
         ],
       ),
