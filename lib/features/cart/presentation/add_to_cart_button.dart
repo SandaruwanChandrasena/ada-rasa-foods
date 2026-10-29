@@ -7,6 +7,7 @@ import '../domain/cart.dart';
 import 'cart_cubit.dart';
 import 'cart_state.dart';
 import 'clear_cart_dialog.dart';
+import 'fly_to_cart.dart';
 
 // "Add" button that turns into a minus / amount / plus stepper (CUS-7).
 class AddToCartButton extends StatelessWidget {
@@ -49,7 +50,10 @@ class AddToCartButton extends StatelessWidget {
                   canAdd: quantity < Cart.maxQuantity,
                   onMinus: () =>
                       context.read<CartCubit>().decrease(dish.id),
-                  onPlus: () => context.read<CartCubit>().increase(dish.id),
+                  onPlus: () {
+                    context.read<CartCubit>().increase(dish.id);
+                    flyToCart(context, imageUrl: dish.imageUrl);
+                  },
                 ),
         );
       },
@@ -64,13 +68,15 @@ class AddToCartButton extends StatelessWidget {
     final result = cubit.addDish(dish, restaurantName: restaurantName);
     switch (result) {
       case AddToCartResult.added:
-        return;
+        flyToCart(context, imageUrl: dish.imageUrl);
       case AddToCartResult.otherRestaurant:
         final yes = await showClearCartDialog(
           context,
           currentRestaurant: cubit.state.cart.restaurantName,
         );
-        if (yes) cubit.clearAndAdd(dish, restaurantName: restaurantName);
+        if (!yes) return;
+        cubit.clearAndAdd(dish, restaurantName: restaurantName);
+        if (context.mounted) flyToCart(context, imageUrl: dish.imageUrl);
       case AddToCartResult.maxReached:
         messenger.showSnackBar(
           const SnackBar(
