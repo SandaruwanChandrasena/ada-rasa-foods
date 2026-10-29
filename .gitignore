@@ -43,6 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Gradle build output and reports (made again on every build)
+/android/app/build/
+/android/build/
 
 # Kotlin compiler temp files
 .kotlin/

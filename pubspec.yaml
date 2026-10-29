@@ -44,6 +44,9 @@ dependencies:
   cloud_firestore: ^7.1.0
   google_sign_in: ^7.2.0
   flutter_svg: ^2.3.0
+  # Saves the cart on the phone (no internet needed).
+  hive_ce: ^2.22.0
+  hive_ce_flutter: ^2.5.0
 
 dev_dependencies:
   flutter_test:
