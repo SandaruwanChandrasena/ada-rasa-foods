@@ -6,6 +6,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../cart/presentation/cart_icon_button.dart';
+import '../../cart/presentation/cart_problem_banner.dart';
 import 'restaurant_card.dart';
 import 'restaurant_list_cubit.dart';
 import 'restaurant_list_state.dart';
@@ -73,6 +74,7 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
         builder: (context, state) {
           return Column(
             children: [
+              const CartProblemBanner(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: _SearchBox(

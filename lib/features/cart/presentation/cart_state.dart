@@ -50,6 +50,33 @@ class CartState extends Equatable {
       ? 0
       : cart.totalWithout(unavailableDishIds);
 
+  // Shows the red "!" badge and the warning banner.
+  bool get hasProblem =>
+      !cart.isEmpty &&
+      (restaurantStatus == CartRestaurantStatus.closed ||
+          restaurantStatus == CartRestaurantStatus.unavailable ||
+          hasUnavailableDishes);
+
+  // One short line for the warning banner. Null means no problem.
+  String? get problemMessage {
+    if (!hasProblem) return null;
+    final name = cart.restaurantName;
+
+    switch (restaurantStatus) {
+      case CartRestaurantStatus.unavailable:
+        return '$name is not available now. Please clear your cart.';
+      case CartRestaurantStatus.closed:
+        return '$name is closed now. Your cart is saved until it opens.';
+      case CartRestaurantStatus.checking:
+      case CartRestaurantStatus.open:
+        final count =
+            cart.items.where((item) => !isDishAvailable(item.dishId)).length;
+        return count == 1
+            ? '1 dish in your cart is not available now.'
+            : '$count dishes in your cart are not available now.';
+    }
+  }
+
   bool get canCheckout =>
       !cart.isEmpty &&
       restaurantStatus == CartRestaurantStatus.open &&

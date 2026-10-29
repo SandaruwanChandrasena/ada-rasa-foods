@@ -16,18 +16,27 @@ class CartIconButton extends StatelessWidget {
     return BlocBuilder<CartCubit, CartState>(
       // Counts only dishes that can be ordered now.
       buildWhen: (previous, current) =>
-          previous.itemCount != current.itemCount,
+          previous.itemCount != current.itemCount ||
+          previous.hasProblem != current.hasProblem,
       builder: (context, state) {
         final count = state.itemCount;
+        final problem = state.hasProblem;
 
         return IconButton(
-          tooltip: 'Cart',
+          tooltip: problem ? 'Cart needs your attention' : 'Cart',
           onPressed: () => context.push(AppRoutes.cart),
           icon: Badge(
-            isLabelVisible: count > 0,
-            backgroundColor: AppTheme.brandOrange,
+            // A problem shows a red "!" in place of the number.
+            isLabelVisible: problem || count > 0,
+            backgroundColor:
+                problem ? Colors.red.shade700 : AppTheme.brandOrange,
             textColor: Colors.white,
-            label: Text(count > 99 ? '99+' : '$count'),
+            label: problem
+                ? const Text(
+                    '!',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  )
+                : Text(count > 99 ? '99+' : '$count'),
             child: const Icon(Icons.shopping_bag_outlined),
           ),
         );

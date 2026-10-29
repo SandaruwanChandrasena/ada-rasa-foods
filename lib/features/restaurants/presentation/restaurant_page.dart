@@ -5,6 +5,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../cart/presentation/add_to_cart_button.dart';
 import '../../cart/presentation/cart_icon_button.dart';
+import '../../cart/presentation/cart_problem_banner.dart';
 import '../../menu/presentation/dish_row.dart';
 import '../domain/restaurant.dart';
 import 'restaurant_detail_cubit.dart';
@@ -97,6 +98,10 @@ class _LoadedView extends StatelessWidget {
                 iconSize: 72,
               ),
             ),
+          ),
+          // Shows only on the restaurant that is in the cart.
+          SliverToBoxAdapter(
+            child: CartProblemBanner(restaurantId: restaurant.id),
           ),
           SliverToBoxAdapter(child: _InfoSection(restaurant: restaurant)),
           if (sections.isEmpty)
