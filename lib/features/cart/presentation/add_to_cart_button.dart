@@ -48,8 +48,10 @@ class AddToCartButton extends StatelessWidget {
                   key: const ValueKey('stepper'),
                   quantity: quantity,
                   canAdd: quantity < Cart.maxQuantity,
-                  onMinus: () =>
-                      context.read<CartCubit>().decrease(dish.id),
+                  onMinus: () {
+                    context.read<CartCubit>().decrease(dish.id);
+                    flyToBin(context, imageUrl: dish.imageUrl);
+                  },
                   onPlus: () {
                     context.read<CartCubit>().increase(dish.id);
                     flyToCart(context, imageUrl: dish.imageUrl);
