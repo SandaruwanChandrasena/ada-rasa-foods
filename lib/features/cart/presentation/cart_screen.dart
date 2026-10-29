@@ -254,11 +254,37 @@ class _CartItemRow extends StatelessWidget {
             tooltip: 'Remove',
             icon: const Icon(Icons.delete_outline),
             color: available ? Colors.grey.shade700 : Colors.red.shade700,
-            onPressed: () => context.read<CartCubit>().remove(item.dishId),
+            onPressed: () => _confirmRemove(context),
           ),
         ],
       ),
     );
+  }
+
+  // Asks first, so a wrong tap does not remove a dish.
+  Future<void> _confirmRemove(BuildContext context) async {
+    final cubit = context.read<CartCubit>();
+
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Remove ${item.name}?'),
+        content: const Text('This dish will be removed from your cart.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            // The app theme makes FilledButton full width, so we set a size.
+            style: FilledButton.styleFrom(minimumSize: const Size(88, 40)),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (yes ?? false) cubit.remove(item.dishId);
   }
 }
 
