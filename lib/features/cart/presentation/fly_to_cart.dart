@@ -340,11 +340,10 @@ class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
               scale: _grow,
               child: RotationTransition(
                 turns: _turns,
-                // Same look as the bag: top bar color, bag icon color,
-                // and a red round border.
+                // Same look as the bag: no background of its own (so the top
+                // bar shows through), bag icon color, and a red round border.
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: colors.surface,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.red.shade700, width: 1.5),
                   ),
