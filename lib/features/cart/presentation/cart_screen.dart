@@ -103,6 +103,8 @@ class _CartList extends StatelessWidget {
             restaurantId: cart.restaurantId,
             restaurantName: cart.restaurantName,
             available: state.isDishAvailable(item.dishId),
+            restaurantClosed:
+                state.restaurantStatus == CartRestaurantStatus.closed,
           ),
       ],
     );
@@ -154,12 +156,18 @@ class _CartItemRow extends StatelessWidget {
     required this.restaurantId,
     required this.restaurantName,
     required this.available,
+    required this.restaurantClosed,
   });
 
   final CartItem item;
   final String restaurantId;
   final String restaurantName;
+
+  // False when the dish (or the whole restaurant) is not available.
   final bool available;
+
+  // A closed restaurant fades every dish, but they still count.
+  final bool restaurantClosed;
 
   @override
   Widget build(BuildContext context) {
@@ -216,23 +224,27 @@ class _CartItemRow extends StatelessWidget {
       ],
     );
 
+    final faded = !available || restaurantClosed;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
           Expanded(
-            child: available
+            child: !faded
                 ? details
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Opacity(opacity: 0.4, child: details),
-                      const SizedBox(height: 6),
-                      const _NotAvailableLabel(),
+                      if (!available) ...[
+                        const SizedBox(height: 6),
+                        const _NotAvailableLabel(),
+                      ],
                     ],
                   ),
           ),
-          if (available)
+          if (!faded)
             AddToCartButton(
               dish: dish,
               restaurantName: restaurantName,
