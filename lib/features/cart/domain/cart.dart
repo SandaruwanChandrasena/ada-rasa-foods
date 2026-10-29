@@ -32,6 +32,15 @@ class Cart extends Equatable {
 
   int get total => items.fold(0, (sum, item) => sum + item.lineTotal);
 
+  // Counts only dishes not in [skip], like dishes that are not available.
+  int itemCountWithout(Set<String> skip) => items
+      .where((item) => !skip.contains(item.dishId))
+      .fold(0, (sum, item) => sum + item.quantity);
+
+  int totalWithout(Set<String> skip) => items
+      .where((item) => !skip.contains(item.dishId))
+      .fold(0, (sum, item) => sum + item.lineTotal);
+
   int quantityOf(String dishId) {
     for (final item in items) {
       if (item.dishId == dishId) return item.quantity;
@@ -108,6 +117,44 @@ class Cart extends Equatable {
       restaurantName: restaurantName,
       items: newItems,
       updatedAt: now,
+    );
+  }
+
+  // Uses the latest name, price, and image from the live menu.
+  Cart withMenuDetails(List<Dish> menu) {
+    final byId = {for (final dish in menu) dish.id: dish};
+    var changed = false;
+    final newItems = <CartItem>[];
+
+    for (final item in items) {
+      final dish = byId[item.dishId];
+      final same = dish == null ||
+          (dish.name == item.name &&
+              dish.price == item.price &&
+              dish.imageUrl == item.imageUrl);
+      if (same) {
+        newItems.add(item);
+        continue;
+      }
+      changed = true;
+      newItems.add(
+        CartItem(
+          dishId: item.dishId,
+          name: dish.name,
+          price: dish.price,
+          imageUrl: dish.imageUrl,
+          quantity: item.quantity,
+        ),
+      );
+    }
+
+    if (!changed) return this;
+    // updatedAt stays, so a menu change does not reset the 1-day rule.
+    return Cart(
+      restaurantId: restaurantId,
+      restaurantName: restaurantName,
+      items: newItems,
+      updatedAt: updatedAt,
     );
   }
 

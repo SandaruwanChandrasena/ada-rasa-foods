@@ -61,7 +61,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<CartRepository>(() => CartRepositoryImpl(cartBox));
 
   // Singleton: the home, restaurant page, and cart screen share one cart.
-  sl.registerLazySingleton<CartCubit>(() => CartCubit(sl()));
+  // It also gets the restaurant and menu repositories to watch them live.
+  sl.registerLazySingleton<CartCubit>(() => CartCubit(sl(), sl(), sl()));
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
