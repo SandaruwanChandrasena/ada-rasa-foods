@@ -14,10 +14,11 @@ class CartIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<CartCubit, CartState>(
+      // Counts only dishes that can be ordered now.
       buildWhen: (previous, current) =>
-          previous.cart.itemCount != current.cart.itemCount,
+          previous.itemCount != current.itemCount,
       builder: (context, state) {
-        final count = state.cart.itemCount;
+        final count = state.itemCount;
 
         return IconButton(
           tooltip: 'Cart',

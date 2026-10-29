@@ -21,6 +21,7 @@ class AddToCartButton extends StatelessWidget {
   final String restaurantName;
 
   // False when the restaurant is closed or the dish is not available.
+  // Then a grey Add shows, even if the dish is in the cart.
   final bool enabled;
 
   @override
@@ -37,7 +38,7 @@ class AddToCartButton extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           transitionBuilder: (child, animation) =>
               ScaleTransition(scale: animation, child: child),
-          child: quantity == 0
+          child: quantity == 0 || !enabled
               ? _AddButton(
                   key: const ValueKey('add'),
                   onPressed: enabled ? () => _onAdd(context) : null,
@@ -45,7 +46,7 @@ class AddToCartButton extends StatelessWidget {
               : _Stepper(
                   key: const ValueKey('stepper'),
                   quantity: quantity,
-                  canAdd: enabled && quantity < Cart.maxQuantity,
+                  canAdd: quantity < Cart.maxQuantity,
                   onMinus: () =>
                       context.read<CartCubit>().decrease(dish.id),
                   onPlus: () => context.read<CartCubit>().increase(dish.id),

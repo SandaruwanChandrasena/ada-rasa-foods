@@ -6,7 +6,6 @@ import '../../../core/router/app_router.dart';
 import '../../../core/utils/price_format.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../menu/domain/dish.dart';
-import '../domain/cart.dart';
 import '../domain/cart_item.dart';
 import 'add_to_cart_button.dart';
 import 'cart_cubit.dart';
@@ -37,8 +36,8 @@ class CartScreen extends StatelessWidget {
               ? const Center(child: CircularProgressIndicator())
               : cart.isEmpty
                   ? const _EmptyCart()
-                  : _CartList(cart: cart),
-          bottomNavigationBar: cart.isEmpty ? null : _TotalBar(cart: cart),
+                  : _CartList(state: state),
+          bottomNavigationBar: cart.isEmpty ? null : _TotalBar(state: state),
         );
       },
     );
@@ -71,17 +70,19 @@ class CartScreen extends StatelessWidget {
 }
 
 class _CartList extends StatelessWidget {
-  const _CartList({required this.cart});
+  const _CartList({required this.state});
 
-  final Cart cart;
+  final CartState state;
 
   @override
   Widget build(BuildContext context) {
+    final cart = state.cart;
     final textTheme = Theme.of(context).textTheme;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        _RestaurantBanner(state: state),
         // Tap the restaurant name to add more food from it.
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -97,17 +98,68 @@ class _CartList extends StatelessWidget {
         ),
         const Divider(),
         for (final item in cart.items)
-          _CartItemRow(item: item, cart: cart),
+          _CartItemRow(
+            item: item,
+            restaurantId: cart.restaurantId,
+            restaurantName: cart.restaurantName,
+            available: state.isDishAvailable(item.dishId),
+          ),
       ],
     );
   }
 }
 
+// Shows when the restaurant is closed or not available.
+class _RestaurantBanner extends StatelessWidget {
+  const _RestaurantBanner({required this.state});
+
+  final CartState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = state.cart.restaurantName;
+    final String message;
+
+    switch (state.restaurantStatus) {
+      case CartRestaurantStatus.closed:
+        message = '$name is closed now. You can order when it opens.';
+      case CartRestaurantStatus.unavailable:
+        message = '$name is not available now. Please clear your cart.';
+      case CartRestaurantStatus.checking:
+      case CartRestaurantStatus.open:
+        return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: Colors.grey.shade700),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+        ],
+      ),
+    );
+  }
+}
+
 class _CartItemRow extends StatelessWidget {
-  const _CartItemRow({required this.item, required this.cart});
+  const _CartItemRow({
+    required this.item,
+    required this.restaurantId,
+    required this.restaurantName,
+    required this.available,
+  });
 
   final CartItem item;
-  final Cart cart;
+  final String restaurantId;
+  final String restaurantName;
+  final bool available;
 
   @override
   Widget build(BuildContext context) {
@@ -116,55 +168,81 @@ class _CartItemRow extends StatelessWidget {
     // The same stepper as on the menu, so the app has one stepper.
     final dish = Dish(
       id: item.dishId,
-      restaurantId: cart.restaurantId,
+      restaurantId: restaurantId,
       name: item.name,
       price: item.price,
       category: '',
       imageUrl: item.imageUrl,
     );
 
+    final details = Row(
+      children: [
+        FoodImage(
+          imageUrl: item.imageUrl,
+          width: 64,
+          height: 64,
+          iconSize: 28,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.name,
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${formatPrice(item.price)} each',
+                style: textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                formatPrice(item.lineTotal),
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  // A crossed-out price is not in the total.
+                  decoration: available ? null : TextDecoration.lineThrough,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          FoodImage(
-            imageUrl: item.imageUrl,
-            width: 64,
-            height: 64,
-            iconSize: 28,
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+            child: available
+                ? details
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Opacity(opacity: 0.4, child: details),
+                      const SizedBox(height: 6),
+                      const _NotAvailableLabel(),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${formatPrice(item.price)} each',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  formatPrice(item.lineTotal),
-                  style: textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
           ),
-          AddToCartButton(
-            dish: dish,
-            restaurantName: cart.restaurantName,
-            enabled: true,
+          if (available)
+            AddToCartButton(
+              dish: dish,
+              restaurantName: restaurantName,
+              enabled: true,
+            ),
+          IconButton(
+            tooltip: 'Remove',
+            icon: const Icon(Icons.delete_outline),
+            color: available ? Colors.grey.shade700 : Colors.red.shade700,
+            onPressed: () => context.read<CartCubit>().remove(item.dishId),
           ),
         ],
       ),
@@ -172,15 +250,54 @@ class _CartItemRow extends StatelessWidget {
   }
 }
 
-class _TotalBar extends StatelessWidget {
-  const _TotalBar({required this.cart});
+class _NotAvailableLabel extends StatelessWidget {
+  const _NotAvailableLabel();
 
-  final Cart cart;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade700,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Not available now',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _TotalBar extends StatelessWidget {
+  const _TotalBar({required this.state});
+
+  final CartState state;
+
+  // Why Checkout is off. Null means Checkout can be used.
+  String? get _reason {
+    if (state.canCheckout) return null;
+    switch (state.restaurantStatus) {
+      case CartRestaurantStatus.checking:
+        return 'Checking the restaurant...';
+      case CartRestaurantStatus.closed:
+        return 'The restaurant is closed now.';
+      case CartRestaurantStatus.unavailable:
+        return 'The restaurant is not available now.';
+      case CartRestaurantStatus.open:
+        return 'Remove the dishes that are not available to checkout.';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final count = cart.itemCount;
+    final count = state.itemCount;
+    final reason = _reason;
 
     return SafeArea(
       child: Container(
@@ -200,19 +317,33 @@ class _TotalBar extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Total  ${formatPrice(cart.total)}',
+                  'Total  ${formatPrice(state.total)}',
                   style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
+            if (reason != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                reason,
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall?.copyWith(
+                  color: Colors.red.shade700,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             FilledButton(
               // Checkout comes with the next feature (CUS-4).
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Checkout is coming soon.')),
-              ),
+              onPressed: reason != null
+                  ? null
+                  : () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Checkout is coming soon.'),
+                        ),
+                      ),
               child: const Text('Checkout'),
             ),
           ],

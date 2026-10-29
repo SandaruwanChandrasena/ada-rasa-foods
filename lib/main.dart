@@ -11,6 +11,7 @@ import 'features/auth/domain/user_role.dart';
 import 'features/auth/presentation/auth_cubit.dart';
 import 'features/auth/presentation/auth_state.dart';
 import 'features/cart/presentation/cart_cubit.dart';
+import 'features/cart/presentation/cart_state.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -31,6 +32,10 @@ Future<void> main() async {
   runApp(const AdaRasaApp());
 }
 
+// Lets the app show a message bar on any screen.
+final GlobalKey<ScaffoldMessengerState> _messengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
 class AdaRasaApp extends StatelessWidget {
   const AdaRasaApp({super.key});
 
@@ -42,16 +47,38 @@ class AdaRasaApp extends StatelessWidget {
         BlocProvider<AuthCubit>.value(value: sl<AuthCubit>()),
         BlocProvider<CartCubit>.value(value: sl<CartCubit>()),
       ],
-      child: BlocListener<AuthCubit, AuthState>(
-        listenWhen: (previous, current) =>
-            _cartUserId(previous) != _cartUserId(current),
-        // Loads the cart of the customer who signed in.
-        listener: (context, state) =>
-            context.read<CartCubit>().setUser(_cartUserId(state)),
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<AuthCubit, AuthState>(
+            listenWhen: (previous, current) =>
+                _cartUserId(previous) != _cartUserId(current),
+            // Loads the cart of the customer who signed in.
+            listener: (context, state) =>
+                context.read<CartCubit>().setUser(_cartUserId(state)),
+          ),
+          BlocListener<CartCubit, CartState>(
+            listenWhen: (previous, current) =>
+                previous.noticeId != current.noticeId,
+            // Cart messages, like "Dolphin Kottu is not available now."
+            listener: (context, state) {
+              final notice = state.notice;
+              if (notice == null) return;
+              _messengerKey.currentState
+                ?..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text(notice),
+                    duration: const Duration(seconds: 5),
+                  ),
+                );
+            },
+          ),
+        ],
         child: MaterialApp.router(
           title: 'Ada Rasa',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
+          scaffoldMessengerKey: _messengerKey,
           routerConfig: sl<GoRouter>(),
         ),
       ),
