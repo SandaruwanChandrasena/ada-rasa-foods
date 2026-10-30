@@ -75,6 +75,19 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.isActive == true;
     }
 
+    // A saved demo card (CUS-9). Any other field, like a full number
+    // or a CVV, makes hasOnly fail, so the write is refused.
+    function isValidCard(data) {
+      return data.keys().hasOnly(['brand', 'last4', 'holderName', 'expMonth', 'expYear', 'isDefault', 'createdAt'])
+        && data.keys().hasAll(['brand', 'last4', 'holderName', 'expMonth', 'expYear', 'isDefault', 'createdAt'])
+        && data.brand in ['visa', 'mastercard']
+        && data.last4 is string && data.last4.matches('[0-9]{4}')
+        && data.holderName is string && data.holderName.size() >= 2 && data.holderName.size() <= 60
+        && data.expMonth is int && data.expMonth >= 1 && data.expMonth <= 12
+        && data.expYear is int && data.expYear >= 2000 && data.expYear <= 2100
+        && data.isDefault is bool;
+    }
+
     function isValidMenuItem(data) {
       return data.keys().hasOnly(['name', 'description', 'price', 'imageUrl', 'category', 'available'])
         && data.name is string && data.name.size() > 0
@@ -101,6 +114,22 @@ service cloud.firestore {
         || isAdmin();
 
       allow delete: if false;
+    }
+
+    // Only the owner can see or change their cards. Not even the admin.
+    match /users/{uid}/cards/{cardId} {
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && isValidCard(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+
+      // Only the default choice can change. The card details stay the same.
+      allow update: if isOwner(uid)
+        && isValidCard(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isDefault']);
+
+      allow delete: if isOwner(uid);
     }
 
     match /restaurants/{restaurantId} {
