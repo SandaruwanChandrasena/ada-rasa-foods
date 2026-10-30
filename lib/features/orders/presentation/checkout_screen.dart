@@ -61,16 +61,18 @@ class _CheckoutView extends StatelessWidget {
 
     switch (state.status) {
       case CheckoutStatus.placed:
+        final orderId = state.orderId;
+        if (orderId == null) return;
         final cartCubit = context.read<CartCubit>();
-        // Part 3 opens the order status screen here instead.
-        context.go(AppRoutes.customer);
+        // go() replaces checkout, so Back goes home, not to checkout.
+        context.go(AppRoutes.orderStatus(orderId));
         cartCubit.clear();
         messenger
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
-              content: Text('Your order is placed. Pay at pickup.'),
-              duration: Duration(seconds: 5),
+              content: Text('Your order is placed.'),
+              duration: Duration(seconds: 3),
             ),
           );
       case CheckoutStatus.failure:
