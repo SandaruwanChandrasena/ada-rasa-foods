@@ -20,6 +20,9 @@ import '../../features/orders/data/seen_order_repository_impl.dart';
 import '../../features/orders/domain/order_repository.dart';
 import '../../features/orders/domain/seen_order_repository.dart';
 import '../../features/orders/presentation/my_orders_cubit.dart';
+import '../../features/payments/data/card_repository_impl.dart';
+import '../../features/payments/domain/card_repository.dart';
+import '../../features/payments/presentation/cards_cubit.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
 import '../../features/restaurants/domain/restaurant_repository.dart';
 import '../../features/restaurants/presentation/restaurant_list_cubit.dart';
@@ -80,6 +83,12 @@ Future<void> initDependencies() async {
 
   // Singleton: the home banner and My orders share one list.
   sl.registerLazySingleton<MyOrdersCubit>(() => MyOrdersCubit(sl(), sl()));
+
+  // Saved demo cards (CUS-9)
+  sl.registerLazySingleton<CardRepository>(() => CardRepositoryImpl(sl()));
+
+  // Factory: a new cubit for My cards and for checkout.
+  sl.registerFactory<CardsCubit>(() => CardsCubit(sl()));
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
