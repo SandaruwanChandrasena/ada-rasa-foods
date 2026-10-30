@@ -8,6 +8,9 @@ import '../../auth/presentation/auth_cubit.dart';
 import '../../cart/presentation/cart_bar.dart';
 import '../../cart/presentation/cart_icon_button.dart';
 import '../../cart/presentation/cart_problem_banner.dart';
+import '../../orders/presentation/active_order_banner.dart';
+import '../../orders/presentation/my_orders_cubit.dart';
+import '../../orders/presentation/my_orders_state.dart';
 import 'restaurant_card.dart';
 import 'restaurant_list_cubit.dart';
 import 'restaurant_list_state.dart';
@@ -18,8 +21,14 @@ class CustomerHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<RestaurantListCubit>(
-      create: (_) => sl<RestaurantListCubit>()..start(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<RestaurantListCubit>(
+          create: (_) => sl<RestaurantListCubit>()..start(),
+        ),
+        // Shared with My orders, so it is not closed here.
+        BlocProvider<MyOrdersCubit>.value(value: sl<MyOrdersCubit>()),
+      ],
       child: const _CustomerHomeView(),
     );
   }
@@ -34,6 +43,21 @@ class _CustomerHomeView extends StatefulWidget {
 
 class _CustomerHomeViewState extends State<_CustomerHomeView> {
   final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthCubit>().state.user;
+    if (user == null) return;
+
+    // Loads this customer's orders for the banner and My orders.
+    // After sign out the old watch fails, so we start it again.
+    final orders = context.read<MyOrdersCubit>();
+    orders.start(
+      user.uid,
+      force: orders.state.status == MyOrdersStatus.failure,
+    );
+  }
 
   @override
   void dispose() {
@@ -62,6 +86,11 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'My orders',
+            icon: const Icon(Icons.receipt_long_outlined),
+            onPressed: () => context.push(AppRoutes.myOrders),
+          ),
           // Sign out moves to Profile later. The cart icon stays here.
           const CartIconButton(),
           IconButton(
@@ -75,6 +104,7 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
         builder: (context, state) {
           return Column(
             children: [
+              const ActiveOrderBanner(),
               const CartProblemBanner(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),

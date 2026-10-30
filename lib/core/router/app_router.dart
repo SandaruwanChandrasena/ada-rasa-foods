@@ -11,6 +11,7 @@ import '../../features/auth/presentation/sign_up_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/orders/presentation/checkout_screen.dart';
+import '../../features/orders/presentation/my_orders_screen.dart';
 import '../../features/orders/presentation/order_status_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
@@ -39,6 +40,9 @@ class AppRoutes {
 
   // Order status screen inside the customer area (CUS-11).
   static String orderStatus(String orderId) => '$customer/order/$orderId';
+
+  // My orders list inside the customer area.
+  static const String myOrders = '$customer/orders';
 
   // The home path for each role (AUTH-2).
   static String homeFor(UserRole role) {
@@ -105,6 +109,10 @@ GoRouter createRouter(AuthCubit authCubit) {
             path: 'order/:id',
             builder: (context, state) =>
                 OrderStatusScreen(orderId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'orders',
+            builder: (context, state) => const MyOrdersScreen(),
           ),
         ],
       ),
