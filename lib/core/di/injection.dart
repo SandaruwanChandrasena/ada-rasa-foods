@@ -19,6 +19,7 @@ import '../../features/orders/data/order_repository_impl.dart';
 import '../../features/orders/data/seen_order_repository_impl.dart';
 import '../../features/orders/domain/order_repository.dart';
 import '../../features/orders/domain/seen_order_repository.dart';
+import '../../features/orders/presentation/my_orders_cubit.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
 import '../../features/restaurants/domain/restaurant_repository.dart';
 import '../../features/restaurants/presentation/restaurant_list_cubit.dart';
@@ -76,6 +77,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<SeenOrderRepository>(
     () => SeenOrderRepositoryImpl(seenBox),
   );
+
+  // Singleton: the home banner and My orders share one list.
+  sl.registerLazySingleton<MyOrdersCubit>(() => MyOrdersCubit(sl(), sl()));
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));

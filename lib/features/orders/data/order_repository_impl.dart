@@ -12,6 +12,9 @@ class OrderRepositoryImpl implements OrderRepository {
 
   final FirebaseFirestore _firestore;
 
+  // My orders shows only the newest orders, so it loads fast.
+  static const int maxCustomerOrders = 50;
+
   CollectionReference<Map<String, dynamic>> get _orders =>
       _firestore.collection('orders');
 
@@ -50,6 +53,7 @@ class OrderRepositoryImpl implements OrderRepository {
     return _orders
         .where('customerId', isEqualTo: customerId)
         .orderBy('placedAt', descending: true)
+        .limit(maxCustomerOrders)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
