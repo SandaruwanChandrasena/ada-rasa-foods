@@ -16,7 +16,9 @@ import '../../features/cart/presentation/cart_cubit.dart';
 import '../../features/menu/data/menu_repository_impl.dart';
 import '../../features/menu/domain/menu_repository.dart';
 import '../../features/orders/data/order_repository_impl.dart';
+import '../../features/orders/data/seen_order_repository_impl.dart';
 import '../../features/orders/domain/order_repository.dart';
+import '../../features/orders/domain/seen_order_repository.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
 import '../../features/restaurants/domain/restaurant_repository.dart';
 import '../../features/restaurants/presentation/restaurant_list_cubit.dart';
@@ -68,6 +70,12 @@ Future<void> initDependencies() async {
 
   // Orders (CUS-4, CUS-11)
   sl.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(sl()));
+
+  // Rejected orders the customer opened, saved on the phone (home banner).
+  final seenBox = await Hive.openBox<dynamic>(SeenOrderRepositoryImpl.boxName);
+  sl.registerLazySingleton<SeenOrderRepository>(
+    () => SeenOrderRepositoryImpl(seenBox),
+  );
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
