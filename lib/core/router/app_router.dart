@@ -10,6 +10,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
+import '../../features/orders/presentation/checkout_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../widgets/role_home_placeholder.dart';
@@ -31,6 +32,9 @@ class AppRoutes {
 
   // Cart screen inside the customer area (CUS-3).
   static const String cart = '$customer/cart';
+
+  // Checkout screen inside the customer area (CUS-4).
+  static const String checkout = '$customer/checkout';
 
   // The home path for each role (AUTH-2).
   static String homeFor(UserRole role) {
@@ -88,6 +92,10 @@ GoRouter createRouter(AuthCubit authCubit) {
           GoRoute(
             path: 'cart',
             builder: (context, state) => const CartScreen(),
+          ),
+          GoRoute(
+            path: 'checkout',
+            builder: (context, state) => const CheckoutScreen(),
           ),
         ],
       ),

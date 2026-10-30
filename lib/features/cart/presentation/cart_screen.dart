@@ -374,14 +374,9 @@ class _TotalBar extends StatelessWidget {
             ],
             const SizedBox(height: 12),
             FilledButton(
-              // Checkout comes with the next feature (CUS-4).
               onPressed: reason != null
                   ? null
-                  : () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Checkout is coming soon.'),
-                        ),
-                      ),
+                  : () => context.push(AppRoutes.checkout),
               child: const Text('Checkout'),
             ),
           ],
