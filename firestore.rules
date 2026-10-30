@@ -36,6 +36,45 @@ service cloud.firestore {
         && data.isActive is bool;
     }
 
+    // Order fields saved at checkout (CUS-4). Stage 2 adds delivery fields.
+    function isValidNewOrder(data) {
+      return data.keys().hasOnly(['customerId', 'customerName', 'restaurantId', 'restaurantName', 'restaurantAddress', 'items', 'total', 'fulfillment', 'status', 'paymentMethod', 'paymentStatus', 'cardBrand', 'cardLast4', 'placedAt', 'updatedAt'])
+        && data.keys().hasAll(['customerId', 'customerName', 'restaurantId', 'restaurantName', 'restaurantAddress', 'items', 'total', 'fulfillment', 'status', 'paymentMethod', 'paymentStatus', 'cardBrand', 'cardLast4', 'placedAt', 'updatedAt'])
+        && data.customerId == request.auth.uid
+        && data.customerName is string
+        && data.restaurantId is string && data.restaurantId.size() > 0
+        && data.restaurantName is string
+        && data.restaurantAddress is string
+        && data.items is list && data.items.size() > 0 && data.items.size() <= 50
+        && data.total is int && data.total > 0
+        && data.fulfillment == 'pickup'
+        && data.status == 'placed'
+        && data.placedAt == request.time
+        && data.updatedAt == request.time
+        && isValidNewPayment(data);
+    }
+
+    // Cash waits for pickup. A card order is saved only after a good payment.
+    function isValidNewPayment(data) {
+      return (data.paymentMethod == 'cash'
+          && data.paymentStatus == 'pending'
+          && data.cardBrand == ''
+          && data.cardLast4 == '')
+        || (data.paymentMethod == 'card'
+          && data.paymentStatus == 'paid'
+          && data.cardBrand in ['visa', 'mastercard']
+          && data.cardLast4 is string
+          && data.cardLast4.matches('[0-9]{4}')
+          && data.cardLast4 != '0002');
+    }
+
+    // Only an open, active restaurant takes orders.
+    function canTakeOrders(restaurantId) {
+      return exists(/databases/$(database)/documents/restaurants/$(restaurantId))
+        && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.isOpen == true
+        && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.isActive == true;
+    }
+
     function isValidMenuItem(data) {
       return data.keys().hasOnly(['name', 'description', 'price', 'imageUrl', 'category', 'available'])
         && data.name is string && data.name.size() > 0
@@ -92,6 +131,34 @@ service cloud.firestore {
 
         allow delete: if isRestaurantOwner(restaurantId);
       }
+    }
+
+    match /orders/{orderId} {
+      // Customers read only their own orders (CUS-11, My orders).
+      // Restaurant and admin reads come with RES-1 and ADM-4.
+      allow read: if isSignedIn()
+        && resource.data.customerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isValidNewOrder(request.resource.data)
+        && canTakeOrders(request.resource.data.restaurantId);
+
+      // The customer cancels only a placed order (CUS-6).
+      // A paid card order becomes refunded. A cash order stays pending.
+      allow update: if isSignedIn()
+        && resource.data.customerId == request.auth.uid
+        && resource.data.status == 'placed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.updatedAt == request.time
+        && ((resource.data.paymentMethod == 'card'
+            && resource.data.paymentStatus == 'paid'
+            && request.resource.data.paymentStatus == 'refunded')
+          || (resource.data.paymentMethod == 'cash'
+            && request.resource.data.paymentStatus == resource.data.paymentStatus));
+
+      // Orders are never deleted. They end as completed, rejected, or cancelled.
+      allow delete: if false;
     }
 
     // Other collections stay blocked until we add their rules.
