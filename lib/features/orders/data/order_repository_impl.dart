@@ -18,6 +18,12 @@ class OrderRepositoryImpl implements OrderRepository {
   @override
   Future<String> placeOrder(FoodOrder order) async {
     try {
+      // Fails fast with no internet, so the order is never left waiting.
+      await _firestore
+          .collection('restaurants')
+          .doc(order.restaurantId)
+          .get(const GetOptions(source: Source.server));
+
       final doc = await _orders.add(OrderModel.toNewMap(order));
       return doc.id;
     } catch (error) {
