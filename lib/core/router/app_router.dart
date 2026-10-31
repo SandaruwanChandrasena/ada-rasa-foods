@@ -14,6 +14,7 @@ import '../../features/orders/presentation/checkout_screen.dart';
 import '../../features/orders/presentation/my_orders_screen.dart';
 import '../../features/orders/presentation/order_status_screen.dart';
 import '../../features/payments/presentation/add_card_screen.dart';
+import '../../features/payments/presentation/my_cards_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../widgets/role_home_placeholder.dart';
@@ -45,7 +46,8 @@ class AppRoutes {
   // My orders list inside the customer area.
   static const String myOrders = '$customer/orders';
 
-  // Add card screen inside the customer area (CUS-9).
+  // My cards and Add card inside the customer area (CUS-9).
+  static const String myCards = '$customer/cards';
   static const String addCard = '$customer/cards/add';
 
   // The home path for each role (AUTH-2).
@@ -117,6 +119,10 @@ GoRouter createRouter(AuthCubit authCubit) {
           GoRoute(
             path: 'orders',
             builder: (context, state) => const MyOrdersScreen(),
+          ),
+          GoRoute(
+            path: 'cards',
+            builder: (context, state) => const MyCardsScreen(),
           ),
           GoRoute(
             path: 'cards/add',

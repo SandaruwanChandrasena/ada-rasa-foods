@@ -149,6 +149,15 @@ class _OrderSummary extends StatelessWidget {
         Text('Payment', style: bold),
         const SizedBox(height: 8),
         const _CashOption(),
+        // Card payment joins here in Part 7. For now, manage saved cards.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => context.push(AppRoutes.myCards),
+            icon: const Icon(Icons.credit_card_outlined),
+            label: const Text('Manage cards'),
+          ),
+        ),
       ],
     );
   }
