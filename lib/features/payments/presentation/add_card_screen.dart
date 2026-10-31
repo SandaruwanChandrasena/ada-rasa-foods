@@ -368,6 +368,8 @@ class _AddCardViewState extends State<AddCardView>
           child: SafeArea(
             top: false,
             child: SingleChildScrollView(
+              // Swipe the page down to close the keyboard.
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(15, 12, 15, 32),
               child: LayoutBuilder(builder: _buildLayout),
             ),
