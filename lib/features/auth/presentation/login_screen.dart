@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/fade_slide_in.dart';
 import 'auth_cubit.dart';
 import 'auth_state.dart';
 import 'auth_header.dart';
@@ -41,6 +42,16 @@ class _LoginScreenState extends State<LoginScreen> {
         );
   }
 
+  // Each part fades up one by one, [ms] after the page is ready.
+  Widget _enter(int ms, Widget child, {double scaleFrom = 1}) {
+    return FadeSlideIn(
+      delay: Duration(milliseconds: ms),
+      scaleFrom: scaleFrom,
+      offset: scaleFrom == 1 ? const Offset(0, 16) : Offset.zero,
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
@@ -63,6 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return Scaffold(
           body: SafeArea(
             child: SingleChildScrollView(
+              // Swipe the page down to close the keyboard.
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.only(bottom: 24),
               child: Form(
                 key: _formKey,
@@ -75,23 +88,34 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Image.asset(
-                            'assets/images/logo.png',
-                            width: 96,
-                            height: 96,
+                          // The logo pops in.
+                          _enter(
+                            150,
+                            scaleFrom: 0.7,
+                            Image.asset(
+                              'assets/images/logo.png',
+                              width: 96,
+                              height: 96,
+                            ),
                           ),
                           const SizedBox(height: 24),
-                          Text(
-                            'Welcome Back!',
-                            style: textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          _enter(
+                            260,
+                            Text(
+                              'Welcome Back!',
+                              style: textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            'Sign in to continue to your account',
-                            style: textTheme.bodyLarge?.copyWith(
-                              color: colors.onSurfaceVariant,
+                          _enter(
+                            330,
+                            Text(
+                              'Sign in to continue to your account',
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
                             ),
                           ),
                         ],
@@ -103,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          TextFormField(
+                          _enter(400, TextFormField(
                             controller: _emailController,
                             enabled: !isLoading,
                             keyboardType: TextInputType.emailAddress,
@@ -124,9 +148,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                               return null;
                             },
-                          ),
+                          )),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          _enter(470, TextFormField(
                             controller: _passwordController,
                             enabled: !isLoading,
                             obscureText: _hidePassword,
@@ -153,8 +177,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 (value == null || value.isEmpty)
                                     ? 'Please enter your password.'
                                     : null,
-                          ),
-                          Align(
+                          )),
+                          _enter(520, Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: isLoading
@@ -165,9 +189,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                               child: const Text('Forgot Password?'),
                             ),
-                          ),
+                          )),
                           const SizedBox(height: 16),
-                          FilledButton(
+                          _enter(570, FilledButton(
                             onPressed: isLoading ? null : _submit,
                             child: isLoading
                                 ? const SizedBox(
@@ -185,9 +209,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       Icon(Icons.arrow_forward, size: 20),
                                     ],
                                   ),
-                          ),
+                          )),
                           const SizedBox(height: 24),
-                          Row(
+                          _enter(640, Row(
                             children: [
                               const Expanded(child: Divider()),
                               Padding(
@@ -201,16 +225,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const Expanded(child: Divider()),
                             ],
-                          ),
+                          )),
                           const SizedBox(height: 24),
-                          GoogleSignInButton(
+                          _enter(700, GoogleSignInButton(
                             onPressed: isLoading
                                 ? null
                                 : () =>
                                     context.read<AuthCubit>().signInWithGoogle(),
-                          ),
+                          )),
                           const SizedBox(height: 24),
-                          Row(
+                          _enter(760, Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text("Don't have an account?"),
@@ -221,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: const Text('Sign Up'),
                               ),
                             ],
-                          ),
+                          )),
                         ],
                       ),
                     ),

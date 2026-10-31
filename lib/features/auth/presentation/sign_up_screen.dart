@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/fade_slide_in.dart';
 import 'auth_cubit.dart';
 import 'auth_state.dart';
 import 'auth_header.dart';
@@ -53,6 +54,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  // Each part fades up one by one, [ms] after the page is ready.
+  Widget _enter(int ms, Widget child, {double scaleFrom = 1}) {
+    return FadeSlideIn(
+      delay: Duration(milliseconds: ms),
+      scaleFrom: scaleFrom,
+      offset: scaleFrom == 1 ? const Offset(0, 16) : Offset.zero,
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
@@ -72,6 +83,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return Scaffold(
           body: SafeArea(
             child: SingleChildScrollView(
+              // Swipe the page down to close the keyboard.
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.only(bottom: 24),
               child: Form(
                 key: _formKey,
@@ -81,27 +94,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     AuthHeader(
                       imagePath: 'assets/images/burger.jpg',
                       height: 240,
-                      topLeft: IconButton.filledTonal(
+                      // The back button pops in.
+                      topLeft: _enter(150, scaleFrom: 0.7, IconButton.filledTonal(
                         tooltip: 'Back to sign in',
                         icon: const Icon(Icons.arrow_back_ios_new, size: 18),
                         onPressed: isLoading ? null : _goToSignIn,
-                      ),
+                      )),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          _enter(220, Text(
                             'Create Account',
                             style: textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
+                          )),
                           const SizedBox(height: 8),
-                          Text(
+                          _enter(290, Text(
                             'Join us and enjoy delicious food',
                             style: textTheme.bodyLarge?.copyWith(
                               color: colors.onSurfaceVariant,
                             ),
-                          ),
+                          )),
                         ],
                       ),
                     ),
@@ -111,7 +125,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          TextFormField(
+                          _enter(360, TextFormField(
                             controller: _nameController,
                             enabled: !isLoading,
                             textCapitalization: TextCapitalization.words,
@@ -124,9 +138,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 (value == null || value.trim().isEmpty)
                                     ? 'Please enter your name.'
                                     : null,
-                          ),
+                          )),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          _enter(430, TextFormField(
                             controller: _emailController,
                             enabled: !isLoading,
                             keyboardType: TextInputType.emailAddress,
@@ -144,9 +158,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               }
                               return null;
                             },
-                          ),
+                          )),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          _enter(500, TextFormField(
                             controller: _passwordController,
                             enabled: !isLoading,
                             obscureText: _hidePassword,
@@ -169,9 +183,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             validator: (value) => (value == null || value.length < 6)
                                 ? 'Use at least 6 characters.'
                                 : null,
-                          ),
+                          )),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          _enter(570, TextFormField(
                             controller: _confirmController,
                             enabled: !isLoading,
                             obscureText: _hideConfirm,
@@ -196,9 +210,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             validator: (value) => value != _passwordController.text
                                 ? 'Passwords do not match.'
                                 : null,
-                          ),
+                          )),
                           const SizedBox(height: 32),
-                          FilledButton(
+                          _enter(640, FilledButton(
                             onPressed: isLoading ? null : _submit,
                             child: isLoading
                                 ? const SizedBox(
@@ -214,9 +228,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       Icon(Icons.arrow_forward, size: 20),
                                     ],
                                   ),
-                          ),
+                          )),
                           const SizedBox(height: 16),
-                          Row(
+                          _enter(710, Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text('Already have an account?'),
@@ -225,7 +239,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 child: const Text('Sign In'),
                               ),
                             ],
-                          ),
+                          )),
                         ],
                       ),
                     ),

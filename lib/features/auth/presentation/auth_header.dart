@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/widgets/fade_slide_in.dart';
+
 // Top part of the sign in and sign up screens: a food photo in the top
 // right corner that fades into white, with the title on top of it.
 class AuthHeader extends StatelessWidget {
@@ -19,6 +21,8 @@ class AuthHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final photoWidth = width * 0.7;
 
     return SizedBox(
       height: height,
@@ -27,17 +31,32 @@ class AuthHeader extends StatelessWidget {
           Positioned(
             top: 0,
             right: 0,
-            width: width * 0.7,
+            width: photoWidth,
             height: height * 0.85,
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (rect) => const RadialGradient(
-                center: Alignment.topRight,
-                radius: 1.1,
-                colors: [Colors.black, Colors.black, Colors.transparent],
-                stops: [0, 0.45, 1],
-              ).createShader(rect),
-              child: Image.asset(imagePath, fit: BoxFit.cover),
+            // The photo fades in and slowly zooms out a little.
+            child: FadeSlideIn(
+              duration: const Duration(milliseconds: 900),
+              offset: Offset.zero,
+              scaleFrom: 1.08,
+              alignment: Alignment.topRight,
+              // Drawn once and reused, so the keyboard does not redraw it.
+              child: RepaintBoundary(
+                child: ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (rect) => const RadialGradient(
+                    center: Alignment.topRight,
+                    radius: 1.1,
+                    colors: [Colors.black, Colors.black, Colors.transparent],
+                    stops: [0, 0.45, 1],
+                  ).createShader(rect),
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.cover,
+                    // Loads the photo at screen size, not full size.
+                    cacheWidth: (photoWidth * pixelRatio).round(),
+                  ),
+                ),
+              ),
             ),
           ),
           if (topLeft != null)
