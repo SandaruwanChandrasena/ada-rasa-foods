@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 
 import 'package:material_ui/material_ui.dart';
 
@@ -196,6 +195,8 @@ class _CardPreviewState extends State<CardPreview>
   // Shadow and smooth (superellipse) corners, for both sides.
   Widget _side(Widget child) {
     final radius = BorderRadius.circular(_cardRadius);
+    // The soft (but heavy) edge is needed only while the card turns.
+    final turning = _flip.value > 0 && _flip.value < 1;
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: RoundedSuperellipseBorder(borderRadius: radius),
@@ -209,28 +210,68 @@ class _CardPreviewState extends State<CardPreview>
       ),
       child: ClipRSuperellipse(
         borderRadius: radius,
-        // The softest edge while the card turns in 3D.
-        clipBehavior: Clip.antiAliasWithSaveLayer,
+        clipBehavior:
+            turning ? Clip.antiAliasWithSaveLayer : Clip.antiAlias,
         child: child,
       ),
     );
   }
 
-  // A new key when the type changes, so the logo fades in again.
+  // Cross-fade: the old logo fades and shrinks while the new one grows in.
   Widget _logo() {
     final brand = CardChecks.brandOf(widget.cardNumber);
     return SizedBox(
       width: 100,
       height: 45,
-      child: Align(
-        alignment: Alignment.topRight,
-        child: EnterAnimation(
-          key: ValueKey(brand),
-          from: const Offset(0, -8),
-          scaleFrom: 0.85,
-          duration: const Duration(milliseconds: 400),
-          child: CardBrandLogo(brand: brand),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 450),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.topRight,
+          children: [...previous, ?current],
         ),
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1).animate(animation),
+            alignment: Alignment.topRight,
+            child: child,
+          ),
+        ),
+        child: CardBrandLogo(key: ValueKey(brand), brand: brand),
+      ),
+    );
+  }
+
+  // Rolls like a counter: the old text goes up and out, the new comes up.
+  Widget _roll(String text, {required String keyPrefix, TextStyle? style}) {
+    final key = ValueKey('$keyPrefix-$text');
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 380),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.center,
+        children: [...previous, ?current],
+      ),
+      transitionBuilder: (child, animation) {
+        final incoming = child.key == key;
+        final offset = Tween<Offset>(
+          begin: Offset(0, incoming ? 0.45 : -0.45),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: offset, child: child),
+        );
+      },
+      child: Text(
+        text,
+        key: key,
+        softWrap: false,
+        overflow: TextOverflow.visible,
+        style: style,
       ),
     );
   }
@@ -250,7 +291,7 @@ class _CardPreviewState extends State<CardPreview>
 
         // The focus box moves and resizes to the part being typed.
         AnimatedPositioned(
-          duration: const Duration(milliseconds: 350),
+          duration: const Duration(milliseconds: 450),
           curve: smoothCurve,
           left: rect.left,
           top: rect.top,
@@ -261,21 +302,27 @@ class _CardPreviewState extends State<CardPreview>
               duration: const Duration(milliseconds: 350),
               curve: smoothCurve,
               opacity: focusVisible ? 1 : 0,
-              child: ClipRSuperellipse(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                  child: Container(
-                    decoration: ShapeDecoration(
-                      color: const Color(0x14FFFFFF),
-                      shape: RoundedSuperellipseBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(
-                          color: Color(0x8CFFFFFF),
-                          width: 2,
-                        ),
-                      ),
+              // A small pop each time the box moves to a new part.
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey(widget.focusTarget),
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 520),
+                curve: Curves.easeOut,
+                builder: (context, t, child) => Transform.scale(
+                  scale: 1 + 0.06 * math.sin(math.pi * t),
+                  child: child,
+                ),
+                // No blur: it is heavy, and the card is a smooth gradient.
+                child: const DecoratedBox(
+                  decoration: ShapeDecoration(
+                    color: Color(0x1FFFFFFF),
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                      side: BorderSide(color: Color(0xE6FFFFFF), width: 2),
                     ),
+                    shadows: [
+                      BoxShadow(color: Color(0x40FFFFFF), blurRadius: 14),
+                    ],
                   ),
                 ),
               ),
@@ -351,16 +398,10 @@ class _CardPreviewState extends State<CardPreview>
         key: ValueKey('slot-$index'),
         width: isSpace ? 30 : 16,
         child: Center(
-          // A new key when the text changes, so it slides up again.
-          child: EnterAnimation(
-            key: ValueKey('$index-$shown'),
-            from: const Offset(0, 12),
-            child: Text(
-              shown,
-              softWrap: false,
-              overflow: TextOverflow.visible,
-              style: const TextStyle(fontSize: 27, letterSpacing: 1),
-            ),
+          child: _roll(
+            shown,
+            keyPrefix: '$index',
+            style: const TextStyle(fontSize: 27, letterSpacing: 1),
           ),
         ),
       );
@@ -431,14 +472,9 @@ class _CardPreviewState extends State<CardPreview>
         ? widget.cardYear.substring(2, 4)
         : 'YY';
 
-    Widget part(String text) => SizedBox(
+    Widget part(String text, String name) => SizedBox(
           width: 22,
-          // A new key when the value changes, so it slides up.
-          child: EnterAnimation(
-            key: ValueKey(text),
-            from: const Offset(0, 12),
-            child: Text(text, softWrap: false),
-          ),
+          child: _roll(text, keyPrefix: name),
         );
 
     return Container(
@@ -464,7 +500,11 @@ class _CardPreviewState extends State<CardPreview>
               style: const TextStyle(fontSize: 18),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [part(month), const Text('/'), part(year)],
+                children: [
+                  part(month, 'month'),
+                  const Text('/'),
+                  part(year, 'year'),
+                ],
               ),
             ),
           ),

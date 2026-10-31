@@ -192,4 +192,65 @@ void main() {
     expect(find.text('Save card'), findsNothing);
     expect(find.text('Open'), findsOneWidget);
   });
+
+  testWidgets('the CVV box shows dots, not the digits', (tester) async {
+    await openScreen(tester);
+
+    await tester.enterText(cvvField, '123');
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(cvvField);
+    expect(field.obscureText, isTrue);
+    expect(field.obscuringCharacter, '•');
+    // The digits are still kept, so they can be checked.
+    expect(textOf(tester, cvvField), '123');
+  });
+
+  testWidgets('the card waits until the page has slid in', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      BlocProvider<CardsCubit>.value(
+        value: cubit,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<bool>(
+                    builder: (_) => const AddCardView(),
+                  ),
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pump();
+
+    // The card fades in, so read the Opacity just above it.
+    double cardOpacity() => tester
+        .widget<Opacity>(
+          find
+              .ancestor(
+                of: find.byType(CardPreview),
+                matching: find.byType(Opacity),
+              )
+              .first,
+        )
+        .opacity;
+
+    // While the page is still sliding in, the card is not shown yet.
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(cardOpacity(), 0);
+
+    // When everything is done, the card is fully shown.
+    await tester.pumpAndSettle();
+    expect(cardOpacity(), 1);
+  });
 }

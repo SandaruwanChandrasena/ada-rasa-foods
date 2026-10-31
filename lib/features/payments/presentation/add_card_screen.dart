@@ -64,21 +64,25 @@ class _AddCardViewState extends State<AddCardView>
 
   bool _started = false;
 
-  // The page load animation: 1.2 seconds in total.
-  static const int _totalMs = 1200;
+  // The page slide-in. Our animation waits until it ends.
+  ModalRoute<Object?>? _route;
+  Animation<double>? _routeAnimation;
+
+  // The page load animation: 1.5 seconds in total.
+  static const int _totalMs = 1500;
   late final AnimationController _enter = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: _totalMs),
   );
 
-  // Same as CSS cubic-bezier(0.16, 1, 0.3, 1).
-  static const Curve _enterCurve = Cubic(0.16, 1, 0.3, 1);
+  // A soft ease out, gentler than before.
+  static const Curve _enterCurve = Cubic(0.25, 1, 0.5, 1);
 
-  late final Animation<double> _cardAnim = _part(0, 520);
-  late final Animation<double> _formMove = _part(230, 1030);
-  late final Animation<double> _formFade = _part(230, 470);
+  late final Animation<double> _cardAnim = _part(0, 700);
+  late final Animation<double> _formMove = _part(300, 1300);
+  late final Animation<double> _formFade = _part(300, 620);
   late final List<Animation<double>> _itemAnims = [
-    for (var i = 0; i < 4; i++) _part(570 + 70 * i, 970 + 70 * i),
+    for (var i = 0; i < 4; i++) _part(720 + 90 * i, 1200 + 90 * i),
   ];
 
   @override
@@ -99,16 +103,45 @@ class _AddCardViewState extends State<AddCardView>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) return;
+    // Runs again when the page goes on stage. Then check if we can start.
+    if (_started) {
+      _startIfSlideInDone();
+      return;
+    }
     _started = true;
 
     // Phone setting "remove animations": skip the page animation.
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (reduceMotion) {
       _enter.value = 1;
-    } else {
-      _enter.forward();
+      return;
     }
+
+    // Two animations at once look rushed, so wait for the page slide-in.
+    // In its first frame a new page is "offstage" and its animation says
+    // "completed" too early, so we also wait until it is on stage.
+    final route = ModalRoute.of(context);
+    final animation = route?.animation;
+    if (route == null || animation == null || _slideInDone(route)) {
+      _enter.forward();
+    } else {
+      _route = route;
+      _routeAnimation = animation..addStatusListener(_onRouteStatus);
+    }
+  }
+
+  bool _slideInDone(ModalRoute<Object?> route) =>
+      !route.offstage && (route.animation?.isCompleted ?? true);
+
+  void _onRouteStatus(AnimationStatus status) => _startIfSlideInDone();
+
+  void _startIfSlideInDone() {
+    final route = _route;
+    if (route == null || !_slideInDone(route)) return;
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    _routeAnimation = null;
+    _route = null;
+    if (mounted) _enter.forward();
   }
 
   void _refresh() => setState(() {});
@@ -235,6 +268,7 @@ class _AddCardViewState extends State<AddCardView>
 
   @override
   void dispose() {
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
     _blurTimer?.cancel();
     _enter.dispose();
     _numberController.dispose();
@@ -365,19 +399,22 @@ class _AddCardViewState extends State<AddCardView>
           right: 0,
           child: Center(
             child: _cardEnter(
-              SizedBox(
-                width: cardWidth,
-                height: cardHeight,
-                child: CardPreview(
-                  cardNumber: _numberController.text,
-                  cardName: _nameController.text,
-                  cardMonth: _cardMonth,
-                  cardYear: _cardYear,
-                  cardCvv: _cvvController.text,
-                  isFlipped: _isFlipped,
-                  focusTarget: _focusTarget,
-                  onTapNumber: _numberFocus.requestFocus,
-                  onTapName: _nameFocus.requestFocus,
+              // Drawn once and reused, so the keyboard does not redraw it.
+              RepaintBoundary(
+                child: SizedBox(
+                  width: cardWidth,
+                  height: cardHeight,
+                  child: CardPreview(
+                    cardNumber: _numberController.text,
+                    cardName: _nameController.text,
+                    cardMonth: _cardMonth,
+                    cardYear: _cardYear,
+                    cardCvv: _cvvController.text,
+                    isFlipped: _isFlipped,
+                    focusTarget: _focusTarget,
+                    onTapNumber: _numberFocus.requestFocus,
+                    onTapName: _nameFocus.requestFocus,
+                  ),
                 ),
               ),
             ),
@@ -488,6 +525,8 @@ class _AddCardViewState extends State<AddCardView>
           keyboardType: TextInputType.number,
           formatters: [CvvFormatter()],
           errorText: _cvvError,
+          // Dots, like a password box. The card back shows "***".
+          obscure: true,
         ),
       ],
     );
@@ -531,6 +570,7 @@ class _CardInput extends StatelessWidget {
     this.keyboardType,
     this.capitalization = TextCapitalization.none,
     this.errorText,
+    this.obscure = false,
   });
 
   final String label;
@@ -541,6 +581,7 @@ class _CardInput extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextCapitalization capitalization;
   final String? errorText;
+  final bool obscure;
 
   @override
   Widget build(BuildContext context) {
@@ -593,6 +634,8 @@ class _CardInput extends StatelessWidget {
             keyboardType: keyboardType,
             textCapitalization: capitalization,
             inputFormatters: formatters,
+            obscureText: obscure,
+            obscuringCharacter: '•',
             autocorrect: false,
             enableSuggestions: false,
             style: const TextStyle(fontSize: 17, color: Color(0xFF1A2B4B)),
