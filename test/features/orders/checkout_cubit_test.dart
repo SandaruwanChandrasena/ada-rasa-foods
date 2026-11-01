@@ -39,7 +39,20 @@ const user = AppUser(
   uid: 'u1',
   name: 'Nimal',
   email: 'nimal@test.com',
+  phone: '0712345678',
   role: UserRole.customer,
+);
+
+const noPhoneUser = AppUser(
+  uid: 'u1',
+  name: 'Nimal',
+  email: 'nimal@test.com',
+  role: UserRole.customer,
+);
+
+const phoneNeeded = CheckoutState(
+  status: CheckoutStatus.failure,
+  errorMessage: CheckoutCubit.phoneNeededMessage,
 );
 
 final cart = Cart(
@@ -147,6 +160,7 @@ void main() {
 
       expect(order.customerId, 'u1');
       expect(order.customerName, 'Nimal');
+      expect(order.customerPhone, '0712345678');
       expect(order.restaurantAddress, '112 Galle Road, Colombo 04');
       expect(order.items.single.name, 'Chicken Kottu');
       expect(order.total, 2400);
@@ -398,6 +412,81 @@ void main() {
       cubit.reset();
     },
     expect: () => const [
+      placing,
+      CheckoutState(status: CheckoutStatus.placed, orderId: 'o1'),
+    ],
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'no phone: nothing is saved, and it asks for a phone',
+    build: build,
+    act: (cubit) => cubit.placeOrder(user: noPhoneUser, cart: openCart),
+    expect: () => const [phoneNeeded],
+    verify: (_) => verifyNever(() => orders.placeOrder(any())),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'a wrong phone is treated like no phone',
+    build: build,
+    act: (cubit) => cubit.placeOrder(
+      user: const AppUser(
+        uid: 'u1',
+        name: 'Nimal',
+        email: 'nimal@test.com',
+        phone: '0112345678',
+        role: UserRole.customer,
+      ),
+      cart: openCart,
+    ),
+    expect: () => const [phoneNeeded],
+    verify: (_) => verifyNever(() => orders.placeOrder(any())),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'no phone also stops a card order',
+    build: build,
+    act: (cubit) => cubit.placeOrder(
+      user: noPhoneUser,
+      cart: openCart,
+      card: visa,
+    ),
+    expect: () => const [phoneNeeded],
+    verify: (_) => verifyNever(() => orders.placeOrder(any())),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'a phone with spaces is saved as digits only',
+    build: build,
+    act: (cubit) => cubit.placeOrder(
+      user: const AppUser(
+        uid: 'u1',
+        name: 'Nimal',
+        email: 'nimal@test.com',
+        phone: '077 123 4567',
+        role: UserRole.customer,
+      ),
+      cart: openCart,
+    ),
+    verify: (_) => expect(savedOrder(orders).customerPhone, '0771234567'),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'a card order saves the phone too',
+    build: build,
+    act: (cubit) =>
+        cubit.placeOrder(user: user, cart: openCart, card: visa),
+    verify: (_) => expect(savedOrder(orders).customerPhone, '0712345678'),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'after adding a phone, the order can be placed',
+    build: build,
+    act: (cubit) async {
+      await cubit.placeOrder(user: noPhoneUser, cart: openCart);
+      await cubit.placeOrder(user: user, cart: openCart);
+    },
+    expect: () => const [
+      phoneNeeded,
       placing,
       CheckoutState(status: CheckoutStatus.placed, orderId: 'o1'),
     ],

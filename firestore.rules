@@ -37,11 +37,15 @@ service cloud.firestore {
     }
 
     // Order fields saved at checkout (CUS-4). Stage 2 adds delivery fields.
+    // customerPhone is a Sri Lankan mobile number (digits only), so the
+    // restaurant can call the customer.
     function isValidNewOrder(data) {
-      return data.keys().hasOnly(['customerId', 'customerName', 'restaurantId', 'restaurantName', 'restaurantAddress', 'items', 'total', 'fulfillment', 'status', 'paymentMethod', 'paymentStatus', 'cardBrand', 'cardLast4', 'placedAt', 'updatedAt'])
-        && data.keys().hasAll(['customerId', 'customerName', 'restaurantId', 'restaurantName', 'restaurantAddress', 'items', 'total', 'fulfillment', 'status', 'paymentMethod', 'paymentStatus', 'cardBrand', 'cardLast4', 'placedAt', 'updatedAt'])
+      return data.keys().hasOnly(['customerId', 'customerName', 'customerPhone', 'restaurantId', 'restaurantName', 'restaurantAddress', 'items', 'total', 'fulfillment', 'status', 'paymentMethod', 'paymentStatus', 'cardBrand', 'cardLast4', 'placedAt', 'updatedAt'])
+        && data.keys().hasAll(['customerId', 'customerName', 'customerPhone', 'restaurantId', 'restaurantName', 'restaurantAddress', 'items', 'total', 'fulfillment', 'status', 'paymentMethod', 'paymentStatus', 'cardBrand', 'cardLast4', 'placedAt', 'updatedAt'])
         && data.customerId == request.auth.uid
         && data.customerName is string
+        && data.customerPhone is string
+        && data.customerPhone.matches('07[0-9]{8}')
         && data.restaurantId is string && data.restaurantId.size() > 0
         && data.restaurantName is string
         && data.restaurantAddress is string

@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/errors/data_failure.dart';
 import '../../auth/domain/app_user.dart';
+import '../../auth/domain/phone_checks.dart';
 import '../../cart/presentation/cart_state.dart';
 import '../../payments/domain/payment_card.dart';
 import '../../restaurants/domain/restaurant_repository.dart';
@@ -20,6 +21,9 @@ class CheckoutCubit extends Cubit<CheckoutState> {
   static const declinedMessage =
       'Your card was declined (demo). No order was placed.';
 
+  static const phoneNeededMessage =
+      'Please add your phone number, so the restaurant can call you.';
+
   final OrderRepository _orderRepository;
   final RestaurantRepository _restaurantRepository;
 
@@ -36,6 +40,17 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         const CheckoutState(
           status: CheckoutStatus.failure,
           errorMessage: 'Your cart cannot be ordered right now.',
+        ),
+      );
+      return;
+    }
+
+    // The restaurant must be able to call. The rules check this too.
+    if (!PhoneChecks.isValid(user.phone)) {
+      emit(
+        const CheckoutState(
+          status: CheckoutStatus.failure,
+          errorMessage: phoneNeededMessage,
         ),
       );
       return;
@@ -69,6 +84,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         cart: cart.cart,
         customerId: user.uid,
         customerName: user.name,
+        customerPhone: PhoneChecks.digitsOnly(user.phone),
         restaurantAddress: restaurant.address,
         paymentMethod:
             card == null ? PaymentMethod.cash : PaymentMethod.card,

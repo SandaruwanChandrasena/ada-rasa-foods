@@ -4,7 +4,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/price_format.dart';
+import '../../auth/domain/phone_checks.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../cart/presentation/cart_cubit.dart';
 import '../../cart/presentation/cart_state.dart';
@@ -234,6 +236,10 @@ class _CheckoutViewState extends State<_CheckoutView> {
         return BlocBuilder<CartCubit, CartState>(
           builder: (context, cart) {
             final placed = checkout.status == CheckoutStatus.placed;
+            // Rebuilds when the phone is added or changed.
+            final phone = context.select<AuthCubit, String>(
+              (auth) => auth.state.user?.phone ?? '',
+            );
 
             return Scaffold(
               appBar: AppBar(title: const Text('Checkout')),
@@ -241,6 +247,12 @@ class _CheckoutViewState extends State<_CheckoutView> {
                   ? const _EmptyCheckout()
                   : _OrderSummary(
                       cart: cart,
+                      contact: CheckoutPhoneBox(
+                        phone: phone,
+                        onAddPhone: () => context.push(AppRoutes.addPhone),
+                        onChangePhone: () =>
+                            context.push(AppRoutes.editProfile),
+                      ),
                       payment: PaymentOptions(
                         cards: cards,
                         now: cardsCubit.now,
@@ -259,6 +271,7 @@ class _CheckoutViewState extends State<_CheckoutView> {
                       card: card,
                       busy: busy,
                       cardsLoading: cards.status == CardsStatus.loading,
+                      phoneMissing: !PhoneChecks.isValid(phone),
                       onPlace: () => _place(card),
                     ),
             );
@@ -314,9 +327,14 @@ class _CheckoutViewState extends State<_CheckoutView> {
 }
 
 class _OrderSummary extends StatelessWidget {
-  const _OrderSummary({required this.cart, required this.payment});
+  const _OrderSummary({
+    required this.cart,
+    required this.contact,
+    required this.payment,
+  });
 
   final CartState cart;
+  final Widget contact;
   final Widget payment;
 
   @override
@@ -369,6 +387,10 @@ class _OrderSummary extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
+        Text('Contact', style: bold),
+        const SizedBox(height: 8),
+        contact,
+        const SizedBox(height: 24),
         Text('Payment', style: bold),
         const SizedBox(height: 8),
         payment,
@@ -409,6 +431,7 @@ class _PlaceOrderBar extends StatelessWidget {
     required this.card,
     required this.busy,
     required this.cardsLoading,
+    required this.phoneMissing,
     required this.onPlace,
   });
 
@@ -424,12 +447,16 @@ class _PlaceOrderBar extends StatelessWidget {
   // Wait for the cards, so the default card is not skipped by mistake.
   final bool cardsLoading;
 
+  // No order without a phone, so the restaurant can call.
+  final bool phoneMissing;
+
   final VoidCallback onPlace;
 
   @override
   Widget build(BuildContext context) {
     final canPlace = cart.canCheckout &&
         !cardsLoading &&
+        !phoneMissing &&
         !busy &&
         checkout.status != CheckoutStatus.placed;
 
@@ -457,6 +484,69 @@ class _PlaceOrderBar extends StatelessWidget {
                       : 'Pay ${formatPrice(cart.total)}',
                 ),
         ),
+      ),
+    );
+  }
+}
+
+// The phone the restaurant will call. Asks for one when it is missing.
+class CheckoutPhoneBox extends StatelessWidget {
+  const CheckoutPhoneBox({
+    super.key,
+    required this.phone,
+    required this.onAddPhone,
+    required this.onChangePhone,
+  });
+
+  final String phone;
+  final VoidCallback onAddPhone;
+  final VoidCallback onChangePhone;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!PhoneChecks.isValid(phone)) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF1EA),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.brandOrange),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.phone_in_talk_outlined, color: AppTheme.brandOrange),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Add your phone number so the restaurant can call you.',
+                  ),
+                ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onAddPhone,
+                icon: const Icon(Icons.add),
+                label: const Text('Add phone'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.phone_outlined),
+      title: const Text('The restaurant may call you at'),
+      subtitle: Text(PhoneChecks.format(phone)),
+      trailing: TextButton(
+        onPressed: onChangePhone,
+        child: const Text('Change'),
       ),
     );
   }
