@@ -73,8 +73,8 @@ class AppRoutes {
 GoRouter createRouter(AuthCubit authCubit) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
-    // Runs the redirect again every time AuthCubit changes.
-    refreshListenable: _StreamListenable(authCubit.stream),
+    // Runs the redirect again on sign in, sign out, or a role change.
+    refreshListenable: AuthRouteRefresh(authCubit.stream),
     redirect: (context, state) {
       final auth = authCubit.state;
       final location = state.matchedLocation;
@@ -183,13 +183,21 @@ String? _homeRedirect(AuthState auth, String location) {
   return location.startsWith(home) ? null : home;
 }
 
-// Turns the Cubit stream into a Listenable that go_router can watch.
-class _StreamListenable extends ChangeNotifier {
-  _StreamListenable(Stream<dynamic> stream) {
-    _subscription = stream.listen((_) => notifyListeners());
+// The only parts of AuthState that can move the user to another page.
+// A new name or phone gives the same key, so the router is not woken up.
+(AuthStatus, UserRole?) authRouteKey(AuthState auth) =>
+    (auth.status, auth.user?.role);
+
+// Wakes the router only when the route key changes.
+// If every change woke it, a page closed at the same moment (like Edit
+// profile after Save) could come back.
+class AuthRouteRefresh extends ChangeNotifier {
+  AuthRouteRefresh(Stream<AuthState> stream) {
+    _subscription =
+        stream.map(authRouteKey).distinct().listen((_) => notifyListeners());
   }
 
-  late final StreamSubscription<dynamic> _subscription;
+  late final StreamSubscription<(AuthStatus, UserRole?)> _subscription;
 
   @override
   void dispose() {
