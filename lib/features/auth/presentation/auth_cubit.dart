@@ -68,6 +68,15 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthState.unauthenticated());
   }
 
+  // Shows a new name or phone at once, after the profile is saved.
+  // Only for the same signed-in user.
+  void updateUser(AppUser user) {
+    final current = state.user;
+    if (state.status != AuthStatus.authenticated || current == null) return;
+    if (current.uid != user.uid || current == user) return;
+    emit(AuthState.authenticated(user));
+  }
+
   // Shared by Google, email sign-in, and sign-up.
   Future<void> _signIn(Future<AppUser?> Function() action) async {
     if (state.isLoading) return; // Stops double taps.
