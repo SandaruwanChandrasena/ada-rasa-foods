@@ -111,7 +111,11 @@ void main() {
 
     expect(find.text('Edit profile'), findsOneWidget);
     expect(find.text('Nimal'), findsOneWidget);
-    expect(find.text('071 234 5678'), findsOneWidget);
+    // The hint is also "071 234 5678", so we read the box's own text.
+    final phone = tester.widget<TextField>(
+      find.descendant(of: field('Phone'), matching: find.byType(TextField)),
+    );
+    expect(phone.controller!.text, '071 234 5678');
     expect(find.text('nimal@test.com'), findsOneWidget);
     expect(find.text('Your email cannot be changed.'), findsOneWidget);
   });
