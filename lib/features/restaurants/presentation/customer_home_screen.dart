@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/fade_slide_in.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../cart/presentation/cart_bar.dart';
 import '../../cart/presentation/cart_icon_button.dart';
@@ -11,7 +12,7 @@ import '../../cart/presentation/cart_problem_banner.dart';
 import '../../orders/presentation/active_order_banner.dart';
 import '../../orders/presentation/my_orders_cubit.dart';
 import '../../orders/presentation/my_orders_state.dart';
-import 'restaurant_card.dart';
+import 'home_restaurant_list.dart';
 import 'restaurant_list_cubit.dart';
 import 'restaurant_list_state.dart';
 
@@ -102,72 +103,47 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
       ),
       body: BlocBuilder<RestaurantListCubit, RestaurantListState>(
         builder: (context, state) {
+          final cubit = context.read<RestaurantListCubit>();
           return Column(
             children: [
-              const ActiveOrderBanner(),
-              const CartProblemBanner(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: _SearchBox(
-                  controller: _searchController,
-                  onChanged: context.read<RestaurantListCubit>().search,
-                  onClear: _clearSearch,
+              // Banners fade in and the search box slides down, once.
+              const FadeSlideIn(
+                offset: Offset.zero,
+                duration: Duration(milliseconds: 400),
+                child: ActiveOrderBanner(),
+              ),
+              const FadeSlideIn(
+                offset: Offset.zero,
+                duration: Duration(milliseconds: 400),
+                child: CartProblemBanner(),
+              ),
+              FadeSlideIn(
+                offset: const Offset(0, -12),
+                duration: const Duration(milliseconds: 450),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: _SearchBox(
+                    controller: _searchController,
+                    onChanged: cubit.search,
+                    onClear: _clearSearch,
+                  ),
                 ),
               ),
-              if (state.status == RestaurantListStatus.loaded &&
-                  state.cuisines.isNotEmpty)
-                _CuisineChips(
-                  cuisines: state.cuisines,
-                  selected: state.selectedCuisine,
-                  onSelected: context.read<RestaurantListCubit>().selectCuisine,
+              Expanded(
+                child: HomeRestaurantList(
+                  state: state,
+                  onCuisineSelected: cubit.selectCuisine,
+                  onRetry: cubit.start,
+                  onOpen: (restaurant) =>
+                      context.push(AppRoutes.restaurantPage(restaurant.id)),
                 ),
-              Expanded(child: _buildBody(context, state)),
+              ),
             ],
           );
         },
       ),
       bottomNavigationBar: const CartBar(),
     );
-  }
-
-  Widget _buildBody(BuildContext context, RestaurantListState state) {
-    switch (state.status) {
-      case RestaurantListStatus.loading:
-        return const Center(child: CircularProgressIndicator());
-
-      case RestaurantListStatus.failure:
-        return _MessageView(
-          icon: Icons.wifi_off_rounded,
-          message: state.errorMessage ?? 'Something went wrong.',
-          buttonText: 'Retry',
-          onPressed: context.read<RestaurantListCubit>().start,
-        );
-
-      case RestaurantListStatus.loaded:
-        final restaurants = state.visibleRestaurants;
-        if (restaurants.isEmpty) {
-          final noData = state.restaurants.isEmpty;
-          return _MessageView(
-            icon: Icons.search_off_rounded,
-            message: noData
-                ? 'No restaurants yet.'
-                : 'No restaurants match your search.',
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          itemCount: restaurants.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 14),
-          itemBuilder: (context, index) {
-            final restaurant = restaurants[index];
-            return RestaurantCard(
-              restaurant: restaurant,
-              onTap: () =>
-                  context.push(AppRoutes.restaurantPage(restaurant.id)),
-            );
-          },
-        );
-    }
   }
 }
 
@@ -203,80 +179,6 @@ class _SearchBox extends StatelessWidget {
                 ),
         ),
         isDense: true,
-      ),
-    );
-  }
-}
-
-class _CuisineChips extends StatelessWidget {
-  const _CuisineChips({
-    required this.cuisines,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<String> cuisines;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    // Null stands for the "All" chip.
-    final options = <String?>[null, ...cuisines];
-
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: options.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final option = options[index];
-          return Center(
-            child: ChoiceChip(
-              label: Text(option ?? 'All'),
-              selected: option == selected,
-              showCheckmark: false,
-              onSelected: (_) => onSelected(option),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _MessageView extends StatelessWidget {
-  const _MessageView({
-    required this.icon,
-    required this.message,
-    this.buttonText,
-    this.onPressed,
-  });
-
-  final IconData icon;
-  final String message;
-  final String? buttonText;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            if (buttonText != null) ...[
-              const SizedBox(height: 16),
-              OutlinedButton(onPressed: onPressed, child: Text(buttonText!)),
-            ],
-          ],
-        ),
       ),
     );
   }
