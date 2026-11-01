@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../domain/app_user.dart';
 import '../domain/auth_failure.dart';
 import '../domain/auth_repository.dart';
+import '../domain/phone_checks.dart';
 import 'auth_remote_data_source.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -73,6 +74,43 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<AppUser> updateProfile({
+    required AppUser user,
+    required String name,
+    required String phone,
+  }) {
+    return _run(() async {
+      final cleanName = name.trim();
+      final digits = PhoneChecks.digitsOnly(phone);
+
+      // The form checks too. This is the last safety check.
+      if (cleanName.isEmpty) {
+        throw const AuthFailure('Please enter your name.');
+      }
+      final phoneError = PhoneChecks.error(phone);
+      if (phoneError != null) throw AuthFailure(phoneError);
+
+      await _remote.updateProfile(
+        uid: user.uid,
+        name: cleanName,
+        phone: digits,
+      );
+
+      return AppUser(
+        uid: user.uid,
+        name: cleanName,
+        email: user.email,
+        phone: digits,
+        role: user.role,
+        restaurantId: user.restaurantId,
+      );
+    });
+  }
+
+  @override
+  bool get isGoogleUser => _remote.isGoogleUser;
+
+  @override
   Future<void> signOut() {
     return _run(_remote.signOut);
   }
@@ -133,6 +171,7 @@ class AuthRepositoryImpl implements AuthRepository {
       'permission-denied' =>
         'The database blocked this request. Check the Firestore rules.',
       'unavailable' => 'No internet connection. Please try again.',
+      'not-found' => 'Your profile was not found. Please sign in again.',
       _ => 'Could not load your profile. Please try again.',
     };
   }

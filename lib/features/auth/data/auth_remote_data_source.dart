@@ -90,6 +90,21 @@ class AuthRemoteDataSource {
     );
   }
 
+  // Users may change only their name and phone (Firestore rules).
+  Future<void> updateProfile({
+    required String uid,
+    required String name,
+    required String phone,
+  }) {
+    return _users.doc(uid).update({'name': name, 'phone': phone});
+  }
+
+  // True when the signed-in user used Google, not email and password.
+  bool get isGoogleUser {
+    final providers = _auth.currentUser?.providerData ?? const [];
+    return providers.any((info) => info.providerId == 'google.com');
+  }
+
   Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();
