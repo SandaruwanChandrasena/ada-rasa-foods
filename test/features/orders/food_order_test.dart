@@ -57,6 +57,56 @@ void main() {
       ]);
     });
 
+    test('restaurantOpen holds placed, accepted, preparing, ready', () {
+      expect(OrderStatus.restaurantOpen, [
+        OrderStatus.placed,
+        OrderStatus.accepted,
+        OrderStatus.preparing,
+        OrderStatus.ready,
+      ]);
+    });
+
+    test('no status is both open and an end state', () {
+      for (final status in OrderStatus.restaurantOpen) {
+        expect(status.isEnd, isFalse, reason: status.name);
+      }
+    });
+
+    test('restaurant steps for a pickup order', () {
+      const pickup = Fulfillment.pickup;
+      final expected = {
+        OrderStatus.placed: [OrderStatus.accepted, OrderStatus.rejected],
+        OrderStatus.accepted: [OrderStatus.preparing],
+        OrderStatus.preparing: [OrderStatus.ready],
+        OrderStatus.ready: [OrderStatus.completed],
+      };
+
+      for (final status in OrderStatus.values) {
+        expect(
+          status.restaurantStepsFor(pickup),
+          expected[status] ?? const <OrderStatus>[],
+          reason: status.name,
+        );
+      }
+    });
+
+    test('the restaurant does not complete a delivery order', () {
+      expect(
+        OrderStatus.ready.restaurantStepsFor(Fulfillment.delivery),
+        isEmpty,
+      );
+    });
+
+    test('the restaurant has no steps after an end state', () {
+      for (final status in OrderStatus.ends) {
+        expect(
+          status.restaurantStepsFor(Fulfillment.pickup),
+          isEmpty,
+          reason: status.name,
+        );
+      }
+    });
+
     test('pickup steps are in the right order', () {
       expect(OrderStatus.pickupSteps, [
         OrderStatus.placed,
@@ -195,6 +245,86 @@ void main() {
 
     test('statusLabel uses the pickup label for ready', () {
       expect(withStatus(OrderStatus.ready).statusLabel, 'Ready for pickup');
+    });
+
+    test('restaurant may move a placed order only to accepted or rejected',
+        () {
+      final placed = withStatus(OrderStatus.placed);
+
+      for (final next in OrderStatus.values) {
+        final allowed =
+            next == OrderStatus.accepted || next == OrderStatus.rejected;
+        expect(
+          placed.canRestaurantMoveTo(next),
+          allowed,
+          reason: next.name,
+        );
+      }
+    });
+
+    test('restaurant may not skip a step', () {
+      final accepted = withStatus(OrderStatus.accepted);
+
+      expect(accepted.canRestaurantMoveTo(OrderStatus.preparing), isTrue);
+      expect(accepted.canRestaurantMoveTo(OrderStatus.ready), isFalse);
+      expect(accepted.canRestaurantMoveTo(OrderStatus.completed), isFalse);
+    });
+
+    test('restaurant may not change a cancelled order', () {
+      final cancelled = withStatus(OrderStatus.cancelled);
+
+      expect(cancelled.canRestaurantMoveTo(OrderStatus.accepted), isFalse);
+      expect(cancelled.canRestaurantMoveTo(OrderStatus.rejected), isFalse);
+    });
+
+    test('rejecting a paid card order makes it refunded', () {
+      final card = withStatus(OrderStatus.placed);
+
+      expect(
+        card.paymentStatusAfter(OrderStatus.rejected),
+        PaymentStatus.refunded,
+      );
+    });
+
+    test('rejecting a cash order keeps it pending', () {
+      final cash = withStatus(OrderStatus.placed, card: false);
+
+      expect(
+        cash.paymentStatusAfter(OrderStatus.rejected),
+        PaymentStatus.pending,
+      );
+    });
+
+    test('completing a cash order makes it paid', () {
+      final cash = withStatus(OrderStatus.ready, card: false);
+
+      expect(
+        cash.paymentStatusAfter(OrderStatus.completed),
+        PaymentStatus.paid,
+      );
+    });
+
+    test('completing a card order keeps it paid', () {
+      final card = withStatus(OrderStatus.ready);
+
+      expect(
+        card.paymentStatusAfter(OrderStatus.completed),
+        PaymentStatus.paid,
+      );
+    });
+
+    test('middle steps keep the payment the same', () {
+      final cash = withStatus(OrderStatus.placed, card: false);
+      final card = withStatus(OrderStatus.placed);
+
+      for (final next in [
+        OrderStatus.accepted,
+        OrderStatus.preparing,
+        OrderStatus.ready,
+      ]) {
+        expect(cash.paymentStatusAfter(next), PaymentStatus.pending);
+        expect(card.paymentStatusAfter(next), PaymentStatus.paid);
+      }
     });
   });
 }

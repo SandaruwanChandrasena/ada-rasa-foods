@@ -109,6 +109,20 @@ class FoodOrder extends Equatable {
           ? PaymentStatus.refunded
           : paymentStatus;
 
+  // True if the restaurant may move this order to [next].
+  bool canRestaurantMoveTo(OrderStatus next) =>
+      status.restaurantStepsFor(fulfillment).contains(next);
+
+  // Payment after a restaurant step. Reject refunds a paid card.
+  // Completed marks cash as paid (RES-5). Other steps keep it.
+  PaymentStatus paymentStatusAfter(OrderStatus next) {
+    return switch (next) {
+      OrderStatus.rejected => paymentStatusAfterCancel,
+      OrderStatus.completed when !isCard => PaymentStatus.paid,
+      _ => paymentStatus,
+    };
+  }
+
   @override
   List<Object?> get props => [
         id,

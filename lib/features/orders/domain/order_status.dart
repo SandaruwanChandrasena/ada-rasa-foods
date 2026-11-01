@@ -20,12 +20,35 @@ enum OrderStatus {
     completed,
   ];
 
-  // No status can change after an end state.
-  bool get isEnd =>
-      this == completed ||
-      this == delivered ||
-      this == rejected ||
-      this == cancelled;
+  // Orders the restaurant still works on (New and Active tabs).
+  static const List<OrderStatus> restaurantOpen = [
+    placed,
+    accepted,
+    preparing,
+    ready,
+  ];
+
+  // End states. No status can change after one of these.
+  static const List<OrderStatus> ends = [
+    completed,
+    delivered,
+    rejected,
+    cancelled,
+  ];
+
+  bool get isEnd => ends.contains(this);
+
+  // The steps the restaurant owner may take (RES-2, RES-5).
+  // Only a pickup order is completed by the restaurant.
+  List<OrderStatus> restaurantStepsFor(Fulfillment fulfillment) {
+    return switch (this) {
+      placed => const [accepted, rejected],
+      accepted => const [preparing],
+      preparing => const [ready],
+      ready when fulfillment == Fulfillment.pickup => const [completed],
+      _ => const [],
+    };
+  }
 
   // One value, two labels: "ready" depends on pickup or delivery.
   String labelFor(Fulfillment fulfillment) {
