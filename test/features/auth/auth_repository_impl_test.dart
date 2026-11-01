@@ -5,7 +5,6 @@ import 'package:ada_rasa_foods/features/auth/domain/app_user.dart';
 import 'package:ada_rasa_foods/features/auth/domain/auth_failure.dart';
 import 'package:ada_rasa_foods/features/auth/domain/user_role.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
