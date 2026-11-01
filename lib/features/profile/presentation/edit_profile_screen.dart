@@ -156,11 +156,13 @@ class _EditProfileViewState extends State<EditProfileView> {
                       keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _save(),
-                      // Only numbers, spaces, and dashes can be typed.
+                      // Only numbers, spaces, and dashes, and at most 10
+                      // digits, can be typed.
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(
                           RegExp(r'[0-9 \-]'),
                         ),
+                        const _MaxDigitsFormatter(PhoneChecks.length),
                         LengthLimitingTextInputFormatter(13),
                       ],
                       decoration: const InputDecoration(
@@ -228,5 +230,21 @@ class _InfoBox extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// Stops typing after [maxDigits] digits. Spaces and dashes do not count.
+class _MaxDigitsFormatter extends TextInputFormatter {
+  const _MaxDigitsFormatter(this.maxDigits);
+
+  final int maxDigits;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = PhoneChecks.digitsOnly(newValue.text).length;
+    return digits > maxDigits ? oldValue : newValue;
   }
 }

@@ -177,6 +177,30 @@ void main() {
     expect(phone.controller!.text, '0712');
   });
 
+  testWidgets('no more than 10 digits can be typed', (tester) async {
+    await open(tester, user: noPhone);
+
+    String phoneText() => tester
+        .widget<TextField>(
+          find.descendant(
+            of: field('Phone'),
+            matching: find.byType(TextField),
+          ),
+        )
+        .controller!
+        .text;
+
+    await tester.enterText(field('Phone'), '071 234 5678');
+    expect(phoneText(), '071 234 5678');
+
+    // An 11th digit is not added.
+    await tester.enterText(field('Phone'), '071 234 56789');
+    expect(phoneText(), '071 234 5678');
+
+    await tester.enterText(field('Phone'), '07123456789');
+    expect(phoneText(), '071 234 5678');
+  });
+
   testWidgets('a good save updates the user and closes the page',
       (tester) async {
     await open(tester);
