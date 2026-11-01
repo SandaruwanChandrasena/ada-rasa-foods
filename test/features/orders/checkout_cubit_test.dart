@@ -9,6 +9,8 @@ import 'package:ada_rasa_foods/features/orders/domain/order_repository.dart';
 import 'package:ada_rasa_foods/features/orders/domain/order_status.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/checkout_cubit.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/checkout_state.dart';
+import 'package:ada_rasa_foods/features/payments/domain/card_brand.dart';
+import 'package:ada_rasa_foods/features/payments/domain/payment_card.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant_repository.dart';
 import 'package:bloc_test/bloc_test.dart';
@@ -56,6 +58,38 @@ final openCart = CartState(
 );
 
 const placing = CheckoutState(status: CheckoutStatus.placing);
+
+const visa = PaymentCard(
+  id: 'c1',
+  brand: CardBrand.visa,
+  last4: '4242',
+  holderName: 'NIMAL PERERA',
+  expMonth: 8,
+  expYear: 2030,
+);
+
+const master = PaymentCard(
+  id: 'c2',
+  brand: CardBrand.mastercard,
+  last4: '4444',
+  holderName: 'NIMAL PERERA',
+  expMonth: 5,
+  expYear: 2029,
+);
+
+const failing = PaymentCard(
+  id: 'c3',
+  brand: CardBrand.visa,
+  last4: '0002',
+  holderName: 'NIMAL PERERA',
+  expMonth: 8,
+  expYear: 2030,
+);
+
+FoodOrder savedOrder(MockOrderRepository orders) {
+  return verify(() => orders.placeOrder(captureAny())).captured.single
+      as FoodOrder;
+}
 
 void main() {
   late MockOrderRepository orders;
@@ -236,5 +270,136 @@ void main() {
       CheckoutState(status: CheckoutStatus.placed, orderId: 'o1'),
     ],
     verify: (_) => verify(() => orders.placeOrder(any())).called(1),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'a cash order has no card details',
+    build: build,
+    act: (cubit) => cubit.placeOrder(user: user, cart: openCart),
+    verify: (_) {
+      final order = savedOrder(orders);
+      expect(order.cardBrand, '');
+      expect(order.cardLast4, '');
+    },
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'places a card order and gives the new order id',
+    build: build,
+    act: (cubit) =>
+        cubit.placeOrder(user: user, cart: openCart, card: visa),
+    expect: () => const [
+      placing,
+      CheckoutState(status: CheckoutStatus.placed, orderId: 'o1'),
+    ],
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'a card order is saved as paid, with the card type and last 4',
+    build: build,
+    act: (cubit) =>
+        cubit.placeOrder(user: user, cart: openCart, card: visa),
+    verify: (_) {
+      final order = savedOrder(orders);
+      expect(order.paymentMethod, PaymentMethod.card);
+      expect(order.paymentStatus, PaymentStatus.paid);
+      expect(order.cardBrand, 'visa');
+      expect(order.cardLast4, '4242');
+      expect(order.status, OrderStatus.placed);
+      expect(order.total, 2400);
+    },
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'a Mastercard order saves "mastercard"',
+    build: build,
+    act: (cubit) =>
+        cubit.placeOrder(user: user, cart: openCart, card: master),
+    verify: (_) {
+      final order = savedOrder(orders);
+      expect(order.cardBrand, 'mastercard');
+      expect(order.cardLast4, '4444');
+    },
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'the card ending 0002 is never saved',
+    build: build,
+    act: (cubit) =>
+        cubit.placeOrder(user: user, cart: openCart, card: failing),
+    expect: () => const [
+      CheckoutState(
+        status: CheckoutStatus.failure,
+        errorMessage: CheckoutCubit.declinedMessage,
+      ),
+    ],
+    verify: (_) => verifyNever(() => orders.placeOrder(any())),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'a card order fails when the restaurant closed a moment ago',
+    setUp: () => when(() => restaurants.watchRestaurant('r1'))
+        .thenAnswer((_) => Stream.value(restaurant(isOpen: false))),
+    build: build,
+    act: (cubit) =>
+        cubit.placeOrder(user: user, cart: openCart, card: visa),
+    expect: () => const [
+      placing,
+      CheckoutState(
+        status: CheckoutStatus.failure,
+        errorMessage: 'Kottu Corner is not taking orders now.',
+      ),
+    ],
+    verify: (_) => verifyNever(() => orders.placeOrder(any())),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'reset after a failure goes back to ready',
+    build: build,
+    act: (cubit) async {
+      await cubit.placeOrder(user: user, cart: openCart, card: failing);
+      cubit.reset();
+    },
+    expect: () => const [
+      CheckoutState(
+        status: CheckoutStatus.failure,
+        errorMessage: CheckoutCubit.declinedMessage,
+      ),
+      CheckoutState(),
+    ],
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'after a decline, another card can be used',
+    build: build,
+    act: (cubit) async {
+      await cubit.placeOrder(user: user, cart: openCart, card: failing);
+      cubit.reset();
+      await cubit.placeOrder(user: user, cart: openCart, card: visa);
+    },
+    expect: () => const [
+      CheckoutState(
+        status: CheckoutStatus.failure,
+        errorMessage: CheckoutCubit.declinedMessage,
+      ),
+      CheckoutState(),
+      placing,
+      CheckoutState(status: CheckoutStatus.placed, orderId: 'o1'),
+    ],
+    verify: (_) => expect(savedOrder(orders).cardLast4, '4242'),
+  );
+
+  blocTest<CheckoutCubit, CheckoutState>(
+    'reset does nothing when ready or placed',
+    build: build,
+    act: (cubit) async {
+      cubit.reset();
+      await cubit.placeOrder(user: user, cart: openCart);
+      cubit.reset();
+    },
+    expect: () => const [
+      placing,
+      CheckoutState(status: CheckoutStatus.placed, orderId: 'o1'),
+    ],
   );
 }
