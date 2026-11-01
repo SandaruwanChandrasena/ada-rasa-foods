@@ -15,6 +15,8 @@ import '../../features/orders/presentation/my_orders_screen.dart';
 import '../../features/orders/presentation/order_status_screen.dart';
 import '../../features/payments/presentation/add_card_screen.dart';
 import '../../features/payments/presentation/my_cards_screen.dart';
+import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../widgets/role_home_placeholder.dart';
@@ -49,6 +51,13 @@ class AppRoutes {
   // My cards and Add card inside the customer area (CUS-9).
   static const String myCards = '$customer/cards';
   static const String addCard = '$customer/cards/add';
+
+  // Profile and Edit profile inside the customer area (CUS-6).
+  static const String profile = '$customer/profile';
+  static const String editProfile = '$customer/profile/edit';
+
+  // Opened from checkout, it explains why the phone is needed.
+  static const String addPhone = '$editProfile?from=checkout';
 
   // The home path for each role (AUTH-2).
   static String homeFor(UserRole role) {
@@ -127,6 +136,16 @@ GoRouter createRouter(AuthCubit authCubit) {
           GoRoute(
             path: 'cards/add',
             builder: (context, state) => const AddCardScreen(),
+          ),
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: 'profile/edit',
+            builder: (context, state) => EditProfileScreen(
+              forCheckout: state.uri.queryParameters['from'] == 'checkout',
+            ),
           ),
         ],
       ),

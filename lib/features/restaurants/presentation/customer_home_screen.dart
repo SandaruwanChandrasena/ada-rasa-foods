@@ -92,12 +92,12 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
             icon: const Icon(Icons.receipt_long_outlined),
             onPressed: () => context.push(AppRoutes.myOrders),
           ),
-          // Sign out moves to Profile later. The cart icon stays here.
           const CartIconButton(),
+          // Sign out is inside Profile now.
           IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<AuthCubit>().signOut(),
+            tooltip: 'Profile',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => context.push(AppRoutes.profile),
           ),
         ],
       ),
