@@ -8,6 +8,11 @@ import '../../../core/utils/price_format.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../cart/presentation/cart_cubit.dart';
 import '../../cart/presentation/cart_state.dart';
+import '../../payments/domain/payment_card.dart';
+import '../../payments/domain/payment_choice.dart';
+import '../../payments/presentation/cards_cubit.dart';
+import '../../payments/presentation/cards_state.dart';
+import '../../payments/presentation/payment_options.dart';
 import 'checkout_cubit.dart';
 import 'checkout_state.dart';
 
@@ -17,42 +22,129 @@ class CheckoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<CheckoutCubit>(
-      create: (_) => CheckoutCubit(sl(), sl()),
+    final userId = context.read<AuthCubit>().state.user?.uid ?? '';
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<CheckoutCubit>(
+          create: (_) => CheckoutCubit(sl(), sl()),
+        ),
+        // Live saved cards, for the payment list.
+        BlocProvider<CardsCubit>(
+          create: (_) => sl<CardsCubit>()..start(userId),
+        ),
+      ],
       child: const _CheckoutView(),
     );
   }
 }
 
-class _CheckoutView extends StatelessWidget {
+class _CheckoutView extends StatefulWidget {
   const _CheckoutView();
 
   @override
-  Widget build(BuildContext context) {
-    return BlocConsumer<CheckoutCubit, CheckoutState>(
-      listenWhen: (previous, current) => previous.status != current.status,
-      listener: _onCheckoutChanged,
-      builder: (context, checkout) {
-        // Back is blocked while placing, so the cart is always cleared.
-        return PopScope(
-          canPop: !checkout.isPlacing,
-          child: BlocBuilder<CartCubit, CartState>(
-            builder: (context, cart) {
-              final placed = checkout.status == CheckoutStatus.placed;
+  State<_CheckoutView> createState() => _CheckoutViewState();
+}
 
-              return Scaffold(
-                appBar: AppBar(title: const Text('Checkout')),
-                body: cart.cart.isEmpty && !placed
-                    ? const _EmptyCheckout()
-                    : _OrderSummary(cart: cart),
-                bottomNavigationBar: cart.cart.isEmpty
-                    ? null
-                    : _PlaceOrderBar(cart: cart, checkout: checkout),
-              );
-            },
-          ),
-        );
-      },
+class _CheckoutViewState extends State<_CheckoutView> {
+  PaymentChoice _choice = const PaymentChoice();
+
+  // Card ids from before "Add card". Set while we wait for the new card.
+  Set<String>? _idsBeforeAdd;
+
+  void _select(PaymentCard? card) {
+    setState(() {
+      _choice =
+          card == null ? const PaymentChoice.cash() : PaymentChoice.card(card);
+    });
+  }
+
+  Future<void> _manageCards() async {
+    final cards = context.read<CardsCubit>().state;
+
+    // With no cards, go straight to "Add card".
+    if (cards.status == CardsStatus.loaded && cards.cards.isEmpty) {
+      final oldIds = {for (final card in cards.cards) card.id};
+      final saved = await context.push<bool>(AppRoutes.addCard);
+      if (!mounted || saved != true) return;
+      _idsBeforeAdd = oldIds;
+      _pickNewCard(context.read<CardsCubit>().state);
+      return;
+    }
+
+    await context.push(AppRoutes.myCards);
+  }
+
+  // Selects the card just added, once it shows in the live list.
+  void _pickNewCard(CardsState cards) {
+    final oldIds = _idsBeforeAdd;
+    if (oldIds == null) return;
+    final card = PaymentChoice.newCard(
+      cards.cards,
+      oldIds,
+      context.read<CardsCubit>().now,
+    );
+    if (card == null) return;
+    _idsBeforeAdd = null;
+    _select(card);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<CardsCubit, CardsState>(
+      listenWhen: (previous, current) => previous.cards != current.cards,
+      listener: (context, cards) => _pickNewCard(cards),
+      child: BlocConsumer<CheckoutCubit, CheckoutState>(
+        listenWhen: (previous, current) =>
+            previous.status != current.status,
+        listener: _onCheckoutChanged,
+        builder: (context, checkout) {
+          // Back is blocked while placing, so the cart is always cleared.
+          return PopScope(
+            canPop: !checkout.isPlacing,
+            child: BlocBuilder<CardsCubit, CardsState>(
+              builder: (context, cards) {
+                final cardsCubit = context.read<CardsCubit>();
+                final card = _choice.cardFrom(cards.cards, cardsCubit.now);
+
+                return BlocBuilder<CartCubit, CartState>(
+                  builder: (context, cart) {
+                    final placed =
+                        checkout.status == CheckoutStatus.placed;
+
+                    return Scaffold(
+                      appBar: AppBar(title: const Text('Checkout')),
+                      body: cart.cart.isEmpty && !placed
+                          ? const _EmptyCheckout()
+                          : _OrderSummary(
+                              cart: cart,
+                              payment: PaymentOptions(
+                                cards: cards,
+                                now: cardsCubit.now,
+                                selected: card,
+                                onSelected: _select,
+                                onRetry: cardsCubit.retry,
+                                onManageCards: _manageCards,
+                                enabled: !checkout.isPlacing,
+                              ),
+                            ),
+                      bottomNavigationBar: cart.cart.isEmpty
+                          ? null
+                          : _PlaceOrderBar(
+                              cart: cart,
+                              checkout: checkout,
+                              card: card,
+                              cardsLoading:
+                                  cards.status == CardsStatus.loading,
+                            ),
+                    );
+                  },
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -92,9 +184,10 @@ class _CheckoutView extends StatelessWidget {
 }
 
 class _OrderSummary extends StatelessWidget {
-  const _OrderSummary({required this.cart});
+  const _OrderSummary({required this.cart, required this.payment});
 
   final CartState cart;
+  final Widget payment;
 
   @override
   Widget build(BuildContext context) {
@@ -148,40 +241,8 @@ class _OrderSummary extends StatelessWidget {
         const SizedBox(height: 24),
         Text('Payment', style: bold),
         const SizedBox(height: 8),
-        const _CashOption(),
-        // Card payment joins here in Part 7. For now, manage saved cards.
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => context.push(AppRoutes.myCards),
-            icon: const Icon(Icons.credit_card_outlined),
-            label: const Text('Manage cards'),
-          ),
-        ),
+        payment,
       ],
-    );
-  }
-}
-
-// The only choice for now. Saved cards come in Part 7.
-class _CashOption extends StatelessWidget {
-  const _CashOption();
-
-  @override
-  Widget build(BuildContext context) {
-    final orange = Theme.of(context).colorScheme.primary;
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: orange, width: 1.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: Icon(Icons.payments_outlined, color: orange),
-        title: const Text('Cash at pickup'),
-        subtitle: const Text('Pay when you collect your food.'),
-        trailing: Icon(Icons.check_circle, color: orange),
-      ),
     );
   }
 }
@@ -212,14 +273,26 @@ class _ProblemBanner extends StatelessWidget {
 }
 
 class _PlaceOrderBar extends StatelessWidget {
-  const _PlaceOrderBar({required this.cart, required this.checkout});
+  const _PlaceOrderBar({
+    required this.cart,
+    required this.checkout,
+    required this.card,
+    required this.cardsLoading,
+  });
 
   final CartState cart;
   final CheckoutState checkout;
 
+  // The chosen card. Null means cash.
+  final PaymentCard? card;
+
+  // Wait for the cards, so the default card is not skipped by mistake.
+  final bool cardsLoading;
+
   @override
   Widget build(BuildContext context) {
     final canPlace = cart.canCheckout &&
+        !cardsLoading &&
         !checkout.isPlacing &&
         checkout.status != CheckoutStatus.placed;
 
@@ -241,16 +314,25 @@ class _PlaceOrderBar extends StatelessWidget {
                     color: Colors.white,
                   ),
                 )
-              : const Text('Place order'),
+              : Text(
+                  card == null
+                      ? 'Place order'
+                      : 'Pay ${formatPrice(cart.total)}',
+                ),
         ),
       ),
     );
   }
 
+  // Part 7C adds the Processing, success, and declined screens here.
   void _place(BuildContext context) {
     final user = context.read<AuthCubit>().state.user;
     if (user == null) return;
-    context.read<CheckoutCubit>().placeOrder(user: user, cart: cart);
+    context.read<CheckoutCubit>().placeOrder(
+          user: user,
+          cart: cart,
+          card: card,
+        );
   }
 }
 
