@@ -102,6 +102,52 @@ service cloud.firestore {
         && data.available is bool;
     }
 
+    // The customer cancels only a placed order (CUS-6).
+    // A paid card order becomes refunded. A cash order stays pending.
+    function isCustomerCancel() {
+      return resource.data.customerId == request.auth.uid
+        && resource.data.status == 'placed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.updatedAt == request.time
+        && ((resource.data.paymentMethod == 'card'
+            && resource.data.paymentStatus == 'paid'
+            && request.resource.data.paymentStatus == 'refunded')
+          || (resource.data.paymentMethod == 'cash'
+            && request.resource.data.paymentStatus == resource.data.paymentStatus));
+    }
+
+    // Steps the restaurant owner may take (RES-2, RES-5).
+    // Only a pickup order is completed by the restaurant.
+    function isAllowedRestaurantStep(from, to, fulfillment) {
+      return (from == 'placed' && to in ['accepted', 'rejected'])
+        || (from == 'accepted' && to == 'preparing')
+        || (from == 'preparing' && to == 'ready')
+        || (from == 'ready' && to == 'completed' && fulfillment == 'pickup');
+    }
+
+    // Reject refunds a paid card order. Completed marks a cash order paid.
+    // Every other step keeps the payment the same.
+    function isRightRestaurantPayment(before, after) {
+      let refund = after.status == 'rejected'
+        && before.paymentMethod == 'card'
+        && before.paymentStatus == 'paid';
+      let cashPaid = after.status == 'completed'
+        && before.paymentMethod == 'cash';
+      return (refund && after.paymentStatus == 'refunded')
+        || (cashPaid && after.paymentStatus == 'paid')
+        || (!refund && !cashPaid && after.paymentStatus == before.paymentStatus);
+    }
+
+    // The restaurant owner moves the order one step (RES-2, RES-5).
+    function isRestaurantStep() {
+      return isRestaurantOwner(resource.data.restaurantId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
+        && isAllowedRestaurantStep(resource.data.status, request.resource.data.status, resource.data.fulfillment)
+        && isRightRestaurantPayment(resource.data, request.resource.data);
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
 
@@ -168,27 +214,19 @@ service cloud.firestore {
 
     match /orders/{orderId} {
       // Customers read only their own orders (CUS-11, My orders).
-      // Restaurant and admin reads come with RES-1 and ADM-4.
+      // The restaurant owner reads the orders of their restaurant (RES-1).
+      // Admin reads come with ADM-4.
       allow read: if isSignedIn()
-        && resource.data.customerId == request.auth.uid;
+        && (resource.data.customerId == request.auth.uid
+          || isRestaurantOwner(resource.data.restaurantId));
 
       allow create: if isSignedIn()
         && isValidNewOrder(request.resource.data)
         && canTakeOrders(request.resource.data.restaurantId);
 
-      // The customer cancels only a placed order (CUS-6).
-      // A paid card order becomes refunded. A cash order stays pending.
+      // The customer cancels, or the restaurant owner moves one step.
       allow update: if isSignedIn()
-        && resource.data.customerId == request.auth.uid
-        && resource.data.status == 'placed'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt'])
-        && request.resource.data.status == 'cancelled'
-        && request.resource.data.updatedAt == request.time
-        && ((resource.data.paymentMethod == 'card'
-            && resource.data.paymentStatus == 'paid'
-            && request.resource.data.paymentStatus == 'refunded')
-          || (resource.data.paymentMethod == 'cash'
-            && request.resource.data.paymentStatus == resource.data.paymentStatus));
+        && (isCustomerCancel() || isRestaurantStep());
 
       // Orders are never deleted. They end as completed, rejected, or cancelled.
       allow delete: if false;

@@ -1,4 +1,5 @@
 import 'food_order.dart';
+import 'order_status.dart';
 
 // Futures throw DataFailure. Streams report errors as DataFailure.
 abstract class OrderRepository {
@@ -14,4 +15,14 @@ abstract class OrderRepository {
 
   // Only while placed. A paid card order becomes refunded.
   Future<void> cancelOrder(FoodOrder order);
+
+  // Orders the restaurant still works on, oldest first (RES-1).
+  Stream<List<FoodOrder>> watchRestaurantOpenOrders(String restaurantId);
+
+  // The newest ended orders of the restaurant (RES-1 Done tab).
+  Stream<List<FoodOrder>> watchRestaurantDoneOrders(String restaurantId);
+
+  // A restaurant step, like accept or ready (RES-2, RES-5).
+  // The payment changes too when needed.
+  Future<void> moveOrder(FoodOrder order, OrderStatus next);
 }
