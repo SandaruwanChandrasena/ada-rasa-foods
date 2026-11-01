@@ -12,6 +12,8 @@ import 'features/auth/presentation/auth_cubit.dart';
 import 'features/auth/presentation/auth_state.dart';
 import 'features/cart/presentation/cart_cubit.dart';
 import 'features/cart/presentation/cart_state.dart';
+import 'features/profile/presentation/reduce_animations_cubit.dart';
+import 'features/profile/presentation/settings_screen.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -41,11 +43,15 @@ class AdaRasaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Shares the one AuthCubit and the one CartCubit with every screen.
+    // Shares the one AuthCubit, CartCubit, and animation switch with every
+    // screen.
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthCubit>.value(value: sl<AuthCubit>()),
         BlocProvider<CartCubit>.value(value: sl<CartCubit>()),
+        BlocProvider<ReduceAnimationsCubit>.value(
+          value: sl<ReduceAnimationsCubit>(),
+        ),
       ],
       child: MultiBlocListener(
         listeners: [
@@ -80,6 +86,10 @@ class AdaRasaApp extends StatelessWidget {
           theme: AppTheme.light(),
           scaffoldMessengerKey: _messengerKey,
           routerConfig: sl<GoRouter>(),
+          // The in-app "Reduce animations" switch works on every screen.
+          builder: (context, child) => ReduceAnimationsScope(
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

@@ -23,6 +23,9 @@ import '../../features/orders/presentation/my_orders_cubit.dart';
 import '../../features/payments/data/card_repository_impl.dart';
 import '../../features/payments/domain/card_repository.dart';
 import '../../features/payments/presentation/cards_cubit.dart';
+import '../../features/profile/data/settings_repository_impl.dart';
+import '../../features/profile/domain/settings_repository.dart';
+import '../../features/profile/presentation/reduce_animations_cubit.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
 import '../../features/restaurants/domain/restaurant_repository.dart';
 import '../../features/restaurants/presentation/restaurant_list_cubit.dart';
@@ -89,6 +92,18 @@ Future<void> initDependencies() async {
 
   // Factory: a new cubit for My cards and for checkout.
   sl.registerFactory<CardsCubit>(() => CardsCubit(sl()));
+
+  // App settings, saved on this phone (Reduce animations).
+  final settingsBox =
+      await Hive.openBox<dynamic>(SettingsRepositoryImpl.boxName);
+  sl.registerLazySingleton<SettingsRepository>(
+    () => SettingsRepositoryImpl(settingsBox),
+  );
+
+  // Singleton: the whole app and the settings screen share one switch.
+  sl.registerLazySingleton<ReduceAnimationsCubit>(
+    () => ReduceAnimationsCubit(sl()),
+  );
 
   // Router
   sl.registerLazySingleton<GoRouter>(() => createRouter(sl()));
