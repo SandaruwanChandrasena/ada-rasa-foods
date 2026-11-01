@@ -20,11 +20,13 @@ void main() {
     PaymentMethod method, {
     String cardBrand = 'visa',
     String cardLast4 = '4242',
+    String customerPhone = '0712345678',
   }) {
     return FoodOrder.fromCart(
       cart: cart,
       customerId: 'u1',
       customerName: 'Nimal',
+      customerPhone: customerPhone,
       restaurantAddress: '112 Galle Road, Colombo 04',
       paymentMethod: method,
       cardBrand: cardBrand,
@@ -100,6 +102,32 @@ void main() {
       expect(order.paymentStatus, PaymentStatus.pending);
       expect(order.cardBrand, '');
       expect(order.cardLast4, '');
+    });
+
+    test('keeps a copy of the customer phone', () {
+      final order = fromCart(PaymentMethod.cash);
+
+      expect(order.customerName, 'Nimal');
+      expect(order.customerPhone, '0712345678');
+    });
+
+    test('the phone is empty when none is given', () {
+      final order = FoodOrder.fromCart(
+        cart: cart,
+        customerId: 'u1',
+        customerName: 'Nimal',
+        restaurantAddress: 'Colombo',
+        paymentMethod: PaymentMethod.cash,
+      );
+
+      expect(order.customerPhone, '');
+    });
+
+    test('two orders with different phones are not equal', () {
+      expect(
+        fromCart(PaymentMethod.cash),
+        isNot(fromCart(PaymentMethod.cash, customerPhone: '0771234567')),
+      );
     });
 
     test('a card order is paid and keeps the card type and last 4', () {

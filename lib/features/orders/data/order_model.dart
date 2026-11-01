@@ -13,6 +13,9 @@ class OrderModel {
     return {
       'customerId': order.customerId,
       'customerName': order.customerName,
+      // Left out when empty, so the rules can refuse an order with no phone.
+      if (order.customerPhone.isNotEmpty)
+        'customerPhone': order.customerPhone,
       'restaurantId': order.restaurantId,
       'restaurantName': order.restaurantName,
       'restaurantAddress': order.restaurantAddress,
@@ -37,6 +40,7 @@ class OrderModel {
       id: id,
       customerId: map['customerId'] as String? ?? '',
       customerName: map['customerName'] as String? ?? '',
+      customerPhone: map['customerPhone'] as String? ?? '',
       restaurantId: map['restaurantId'] as String? ?? '',
       restaurantName: map['restaurantName'] as String? ?? '',
       restaurantAddress: map['restaurantAddress'] as String? ?? '',

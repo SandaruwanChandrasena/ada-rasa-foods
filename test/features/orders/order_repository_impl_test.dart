@@ -13,11 +13,13 @@ Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
 FoodOrder newOrder({
   String customerId = 'u1',
   PaymentMethod method = PaymentMethod.cash,
+  String phone = '0712345678',
 }) {
   final isCard = method == PaymentMethod.card;
   return FoodOrder(
     customerId: customerId,
     customerName: 'Nimal',
+    customerPhone: phone,
     restaurantId: 'r1',
     restaurantName: 'Kottu Corner',
     restaurantAddress: '112 Galle Road, Colombo 04',
@@ -54,6 +56,7 @@ void main() {
 
       expect(id, isNotEmpty);
       expect(raw['customerId'], 'u1');
+      expect(raw['customerPhone'], '0712345678');
       expect(raw['restaurantName'], 'Kottu Corner');
       expect(raw['total'], 2850);
       expect(raw['status'], 'placed');
@@ -63,6 +66,14 @@ void main() {
       expect(raw['cardLast4'], '');
       expect(raw['placedAt'], isA<Timestamp>());
       expect(raw['updatedAt'], isA<Timestamp>());
+    });
+
+    test('an order with no phone leaves the phone field out', () async {
+      final id = await repository.placeOrder(newOrder(phone: ''));
+      final raw = await readRaw(id);
+
+      expect(raw.containsKey('customerPhone'), isFalse);
+      expect(raw['customerName'], 'Nimal');
     });
 
     test('saves the dishes as a list of copies', () async {
@@ -110,6 +121,7 @@ void main() {
       expect(order!.id, id);
       expect(order.items, newOrder().items);
       expect(order.total, 2850);
+      expect(order.customerPhone, '0712345678');
       expect(order.status, OrderStatus.placed);
       expect(order.placedAt, isNotNull);
     });
@@ -146,6 +158,7 @@ void main() {
 
       expect(order!.items, isEmpty);
       expect(order.total, 0);
+      expect(order.customerPhone, '');
       expect(order.status, OrderStatus.placed);
       expect(order.paymentMethod, PaymentMethod.cash);
       expect(order.paymentStatus, PaymentStatus.pending);

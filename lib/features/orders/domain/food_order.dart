@@ -10,6 +10,7 @@ class FoodOrder extends Equatable {
     this.id = '',
     required this.customerId,
     required this.customerName,
+    this.customerPhone = '',
     required this.restaurantId,
     required this.restaurantName,
     required this.restaurantAddress,
@@ -30,6 +31,7 @@ class FoodOrder extends Equatable {
     required Cart cart,
     required String customerId,
     required String customerName,
+    String customerPhone = '',
     required String restaurantAddress,
     required PaymentMethod paymentMethod,
     String cardBrand = '',
@@ -40,6 +42,7 @@ class FoodOrder extends Equatable {
     return FoodOrder(
       customerId: customerId,
       customerName: customerName,
+      customerPhone: customerPhone,
       restaurantId: cart.restaurantId,
       restaurantName: cart.restaurantName,
       restaurantAddress: restaurantAddress,
@@ -58,6 +61,10 @@ class FoodOrder extends Equatable {
 
   final String customerId;
   final String customerName;
+
+  // A copy of the phone, so the restaurant can call (digits only).
+  // Empty for old orders saved before phones were needed.
+  final String customerPhone;
 
   // Copies of the restaurant details at the time of the order.
   final String restaurantId;
@@ -107,6 +114,7 @@ class FoodOrder extends Equatable {
         id,
         customerId,
         customerName,
+        customerPhone,
         restaurantId,
         restaurantName,
         restaurantAddress,
