@@ -17,6 +17,7 @@ import '../../features/payments/presentation/add_card_screen.dart';
 import '../../features/payments/presentation/my_cards_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/profile/presentation/settings_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../widgets/role_home_placeholder.dart';
@@ -55,6 +56,7 @@ class AppRoutes {
   // Profile and Edit profile inside the customer area (CUS-6).
   static const String profile = '$customer/profile';
   static const String editProfile = '$customer/profile/edit';
+  static const String settings = '$customer/profile/settings';
 
   // Opened from checkout, it explains why the phone is needed.
   static const String addPhone = '$editProfile?from=checkout';
@@ -140,6 +142,10 @@ GoRouter createRouter(AuthCubit authCubit) {
           GoRoute(
             path: 'profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: 'profile/settings',
+            builder: (context, state) => const SettingsScreen(),
           ),
           GoRoute(
             path: 'profile/edit',

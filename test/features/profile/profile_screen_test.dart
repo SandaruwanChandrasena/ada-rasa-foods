@@ -45,6 +45,16 @@ void main() {
         .thenAnswer((_) async {});
   });
 
+  // The page can be longer than the screen. This scrolls until the widget
+  // is really on the screen, so it can be found and tapped.
+  Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(finder, 200);
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+  }
+
+  Finder signOutButton() => find.widgetWithText(OutlinedButton, 'Sign out');
+
   Future<void> show(
     WidgetTester tester, {
     AppUser user = nimal,
@@ -75,6 +85,10 @@ void main() {
         GoRoute(
           path: AppRoutes.myCards,
           builder: (context, state) => const Text('Cards page'),
+        ),
+        GoRoute(
+          path: AppRoutes.settings,
+          builder: (context, state) => const Text('Settings page'),
         ),
       ],
     );
@@ -147,11 +161,23 @@ void main() {
     expect(find.text('Cards page'), findsOneWidget);
   });
 
+  testWidgets('App settings opens the settings page', (tester) async {
+    await show(tester);
+    await scrollTo(tester, find.text('App settings'));
+
+    expect(find.text('Animations, test cards, and About'), findsOneWidget);
+    await tester.tap(find.text('App settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings page'), findsOneWidget);
+  });
+
   testWidgets('Sign out asks first, and Cancel keeps you signed in',
       (tester) async {
     await show(tester);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Sign out'));
+    await scrollTo(tester, signOutButton());
+    await tester.tap(signOutButton());
     await tester.pumpAndSettle();
     expect(find.text('Sign out?'), findsOneWidget);
 
@@ -165,7 +191,8 @@ void main() {
   testWidgets('Sign out in the question signs you out', (tester) async {
     await show(tester);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Sign out'));
+    await scrollTo(tester, signOutButton());
+    await tester.tap(signOutButton());
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
     await tester.pumpAndSettle();

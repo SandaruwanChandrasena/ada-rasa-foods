@@ -78,6 +78,14 @@ class ProfileView extends StatelessWidget {
                         title: 'My cards',
                         onTap: () => context.push(AppRoutes.myCards),
                       ),
+                      const SizedBox(height: 16),
+                      const _SectionTitle('App'),
+                      _Row(
+                        icon: Icons.settings_outlined,
+                        title: 'App settings',
+                        subtitle: 'Animations, test cards, and About',
+                        onTap: () => context.push(AppRoutes.settings),
+                      ),
                       const SizedBox(height: 32),
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
@@ -259,10 +267,16 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.icon, required this.title, required this.onTap});
+  const _Row({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
 
   final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
 
   @override
@@ -271,6 +285,7 @@ class _Row extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       leading: Icon(icon, color: AppTheme.brandOrange),
       title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: Icon(Icons.chevron_right, color: Colors.grey.shade500),
       onTap: onTap,
     );
