@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/errors/data_failure.dart';
 import '../../../core/errors/firestore_errors.dart';
 import '../domain/restaurant.dart';
 import '../domain/restaurant_repository.dart';
@@ -43,5 +44,22 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
           return RestaurantModel.fromMap(doc.id, data);
         })
         .mapErrorsToDataFailure();
+  }
+
+  @override
+  Future<void> setOpen(String restaurantId, {required bool isOpen}) async {
+    final ref = _restaurants.doc(restaurantId);
+
+    try {
+      // Fails fast with no internet, so the switch never shows a wrong state.
+      final doc = await ref.get(const GetOptions(source: Source.server));
+      if (!doc.exists) {
+        throw const DataFailure('This restaurant was not found.');
+      }
+
+      await ref.update({'isOpen': isOpen});
+    } catch (error) {
+      throw toDataFailure(error);
+    }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:ada_rasa_foods/core/errors/data_failure.dart';
 import 'package:ada_rasa_foods/features/restaurants/data/restaurant_repository_impl.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -117,6 +118,65 @@ void main() {
       expect(restaurant.imageUrl, '');
       expect(restaurant.latitude, 0.0);
       expect(restaurant.createdAt, isNull);
+    });
+  });
+
+  group('setOpen', () {
+    Future<Map<String, dynamic>> readRaw(String id) async {
+      final doc = await firestore.collection('restaurants').doc(id).get();
+      return doc.data()!;
+    }
+
+    test('closes an open restaurant', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+
+      await repository.setOpen('r1', isOpen: false);
+
+      expect((await readRaw('r1'))['isOpen'], isFalse);
+    });
+
+    test('opens a closed restaurant', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      await repository.setOpen('r1', isOpen: false);
+
+      await repository.setOpen('r1', isOpen: true);
+
+      expect((await readRaw('r1'))['isOpen'], isTrue);
+    });
+
+    test('changes only isOpen', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      final before = await readRaw('r1');
+
+      await repository.setOpen('r1', isOpen: false);
+      final after = await readRaw('r1');
+
+      expect(after.keys.toSet(), before.keys.toSet());
+      expect(after['name'], before['name']);
+      expect(after['isActive'], before['isActive']);
+      expect(after['createdAt'], before['createdAt']);
+    });
+
+    test('sends a live update to watchRestaurant', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      final results = <Restaurant?>[];
+      final subscription =
+          repository.watchRestaurant('r1').listen(results.add);
+      await settle();
+
+      await repository.setOpen('r1', isOpen: false);
+      await settle();
+
+      expect(results.first!.isOpen, isTrue);
+      expect(results.last!.isOpen, isFalse);
+      await subscription.cancel();
+    });
+
+    test('fails when the restaurant does not exist', () async {
+      await expectLater(
+        repository.setOpen('missing', isOpen: false),
+        throwsA(const DataFailure('This restaurant was not found.')),
+      );
     });
   });
 
