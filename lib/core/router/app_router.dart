@@ -10,6 +10,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
+import '../../features/menu/presentation/dish_form_screen.dart';
 import '../../features/orders/presentation/checkout_screen.dart';
 import '../../features/orders/presentation/my_orders_screen.dart';
 import '../../features/orders/presentation/order_status_screen.dart';
@@ -61,6 +62,10 @@ class AppRoutes {
 
   // Opened from checkout, it explains why the phone is needed.
   static const String addPhone = '$editProfile?from=checkout';
+
+  // Add or edit a dish, inside the restaurant area (RES-3).
+  // It needs DishFormArgs as "extra".
+  static const String dishForm = '$restaurant/dish';
 
   // The home path for each role (AUTH-2).
   static String homeFor(UserRole role) {
@@ -159,6 +164,17 @@ GoRouter createRouter(AuthCubit authCubit) {
       GoRoute(
         path: AppRoutes.restaurant,
         builder: (context, state) => const RestaurantOrdersScreen(),
+        routes: [
+          GoRoute(
+            path: 'dish',
+            builder: (context, state) {
+              final args = state.extra;
+              // After a hot restart the extra is gone. Go back to the menu.
+              if (args is! DishFormArgs) return const DishFormMissing();
+              return DishFormScreen(args: args);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.admin,

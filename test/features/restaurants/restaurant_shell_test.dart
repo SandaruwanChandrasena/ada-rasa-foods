@@ -3,6 +3,7 @@ import 'package:ada_rasa_foods/features/auth/domain/user_role.dart';
 import 'package:ada_rasa_foods/features/auth/presentation/auth_cubit.dart';
 import 'package:ada_rasa_foods/features/auth/presentation/auth_state.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
+import 'package:ada_rasa_foods/features/menu/presentation/dish_form_screen.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/menu_manage_cubit.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/menu_manage_state.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_cubit.dart';
@@ -63,12 +64,14 @@ void main() {
   late MockBoardCubit board;
   late MockMyRestaurantCubit myRestaurant;
   late MockMenuManageCubit menu;
+  late List<DishFormArgs> opened;
 
   setUp(() {
     authCubit = MockAuthCubit();
     board = MockBoardCubit();
     myRestaurant = MockMyRestaurantCubit();
     menu = MockMenuManageCubit();
+    opened = [];
     when(() => authCubit.state)
         .thenReturn(const AuthState.authenticated(owner));
     when(() => authCubit.signOut()).thenAnswer((_) async {});
@@ -98,7 +101,10 @@ void main() {
           BlocProvider<MenuManageCubit>.value(value: menu),
         ],
         child: MaterialApp(
-          home: RestaurantShell(callPhone: (_) async => true),
+          home: RestaurantShell(
+            callPhone: (_) async => true,
+            openDish: (_, args) => opened.add(args),
+          ),
         ),
       ),
     );
@@ -160,14 +166,28 @@ void main() {
     expect(onScreen('Cheese Kottu'), findsNothing);
   });
 
-  testWidgets('Add dish says the page comes next', (tester) async {
+  testWidgets('Add dish opens the dish page with the categories',
+      (tester) async {
     await show(tester);
     await openTab(tester, 'Menu');
 
     await tester.tap(onScreen('Add dish'));
     await tester.pumpAndSettle();
 
-    expect(find.text('The dish page comes next.'), findsOneWidget);
+    expect(opened, hasLength(1));
+    expect(opened.single.restaurantId, 'r1');
+    expect(opened.single.categories, ['Kottu']);
+    expect(opened.single.dish, isNull);
+  });
+
+  testWidgets('tapping a dish opens it for editing', (tester) async {
+    await show(tester);
+    await openTab(tester, 'Menu');
+
+    await tester.tap(onScreen('Cheese Kottu'));
+    await tester.pumpAndSettle();
+
+    expect(opened.single.dish, cheeseKottu);
   });
 
   testWidgets('a new order alert shows on the Menu tab too',
