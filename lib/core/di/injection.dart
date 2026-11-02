@@ -15,6 +15,7 @@ import '../../features/cart/domain/cart_repository.dart';
 import '../../features/cart/presentation/cart_cubit.dart';
 import '../../features/menu/data/menu_repository_impl.dart';
 import '../../features/menu/domain/menu_repository.dart';
+import '../../features/menu/presentation/menu_manage_cubit.dart';
 import '../../features/orders/data/order_repository_impl.dart';
 import '../../features/orders/data/seen_order_repository_impl.dart';
 import '../../features/orders/domain/order_repository.dart';
@@ -64,6 +65,9 @@ Future<void> initDependencies() async {
     () => RestaurantRepositoryImpl(sl()),
   );
   sl.registerLazySingleton<MenuRepository>(() => MenuRepositoryImpl(sl()));
+
+  // Factory: the owner's Menu tab (RES-3).
+  sl.registerFactory<MenuManageCubit>(() => MenuManageCubit(sl()));
 
   // Factory: a new cubit each time the customer home opens.
   sl.registerFactory<RestaurantListCubit>(() => RestaurantListCubit(sl()));

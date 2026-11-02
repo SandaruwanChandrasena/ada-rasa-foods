@@ -6,13 +6,16 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../auth/presentation/auth_cubit.dart';
+import '../../menu/presentation/menu_manage_cubit.dart';
 import '../../restaurants/presentation/my_restaurant_cubit.dart';
+import '../../restaurants/presentation/restaurant_shell.dart';
 import '../domain/food_order.dart';
 import 'restaurant_order_card.dart';
 import 'restaurant_orders_cubit.dart';
 import 'restaurant_orders_state.dart';
 
-// The restaurant owner's home: the live orders board (RES-1, RES-2).
+// The restaurant owner's home. Makes the cubits, then shows the
+// Orders and Menu tabs (RES-1 to RES-5).
 class RestaurantOrdersScreen extends StatelessWidget {
   const RestaurantOrdersScreen({super.key});
 
@@ -35,8 +38,11 @@ class RestaurantOrdersScreen extends StatelessWidget {
         BlocProvider<MyRestaurantCubit>(
           create: (_) => sl<MyRestaurantCubit>()..start(restaurantId),
         ),
+        BlocProvider<MenuManageCubit>(
+          create: (_) => sl<MenuManageCubit>()..start(restaurantId),
+        ),
       ],
-      child: const RestaurantOrdersView(),
+      child: const RestaurantShell(),
     );
   }
 }
