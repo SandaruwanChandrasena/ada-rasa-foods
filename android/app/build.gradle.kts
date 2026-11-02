@@ -28,6 +28,20 @@ android {
         versionName = flutter.versionName
     }
 
+    // Ada Rasa has its own debug key, so its SHA-1 is not the same as the
+    // old Firebase project's. Without the file, the normal debug key is used.
+    val adaRasaDebugKey = file("ada-rasa-debug.keystore")
+    if (adaRasaDebugKey.exists()) {
+        signingConfigs {
+            getByName("debug") {
+                storeFile = adaRasaDebugKey
+                storePassword = "android"
+                keyAlias = "adarasa"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
