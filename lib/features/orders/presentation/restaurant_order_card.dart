@@ -12,6 +12,7 @@ class RestaurantOrderCard extends StatelessWidget {
     required this.order,
     required this.busy,
     required this.onMove,
+    required this.onCall,
   });
 
   final FoodOrder order;
@@ -20,6 +21,9 @@ class RestaurantOrderCard extends StatelessWidget {
   final bool busy;
 
   final void Function(OrderStatus next) onMove;
+
+  // Opens the phone app with the customer's number.
+  final void Function(String phone) onCall;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +72,15 @@ class RestaurantOrderCard extends StatelessWidget {
                   style: order.customerPhone.isEmpty ? grey : null,
                 ),
               ),
+              if (order.customerPhone.isNotEmpty)
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: () => onCall(order.customerPhone),
+                  icon: const Icon(Icons.call, size: 18),
+                  label: const Text('Call'),
+                ),
             ],
           ),
           const Divider(height: 20),

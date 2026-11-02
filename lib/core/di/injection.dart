@@ -29,6 +29,7 @@ import '../../features/profile/domain/settings_repository.dart';
 import '../../features/profile/presentation/reduce_animations_cubit.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
 import '../../features/restaurants/domain/restaurant_repository.dart';
+import '../../features/restaurants/presentation/my_restaurant_cubit.dart';
 import '../../features/restaurants/presentation/restaurant_list_cubit.dart';
 import '../router/app_router.dart';
 
@@ -66,6 +67,9 @@ Future<void> initDependencies() async {
 
   // Factory: a new cubit each time the customer home opens.
   sl.registerFactory<RestaurantListCubit>(() => RestaurantListCubit(sl()));
+
+  // Factory: the owner's restaurant name and Open switch (RES-4).
+  sl.registerFactory<MyRestaurantCubit>(() => MyRestaurantCubit(sl()));
 
   // Cart: saved on the phone with Hive. The box opens once here.
   await Hive.initFlutter();

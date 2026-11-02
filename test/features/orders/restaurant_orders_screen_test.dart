@@ -8,6 +8,8 @@ import 'package:ada_rasa_foods/features/orders/domain/order_status.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_cubit.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_screen.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_state.dart';
+import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
+import 'package:ada_rasa_foods/features/restaurants/presentation/my_restaurant_cubit.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +20,29 @@ class MockAuthCubit extends MockCubit<AuthState> implements AuthCubit {}
 
 class MockBoardCubit extends MockCubit<RestaurantOrdersState>
     implements RestaurantOrdersCubit {}
+
+class MockMyRestaurantCubit extends MockCubit<MyRestaurantState>
+    implements MyRestaurantCubit {}
+
+Restaurant kottu({bool isOpen = true}) {
+  return Restaurant(
+    id: 'r1',
+    name: 'Kottu Corner',
+    cuisine: 'Sri Lankan',
+    ownerId: 'o1',
+    address: 'Colombo',
+    latitude: 6.9,
+    longitude: 79.8,
+    isOpen: isOpen,
+  );
+}
+
+MyRestaurantState restaurantLoaded({bool isOpen = true}) {
+  return MyRestaurantState(
+    view: MyRestaurantView.loaded,
+    restaurant: kottu(isOpen: isOpen),
+  );
+}
 
 const owner = AppUser(
   uid: 'o1',
@@ -57,6 +82,9 @@ FoodOrder order(
 void main() {
   late MockAuthCubit authCubit;
   late MockBoardCubit board;
+  late MockMyRestaurantCubit myRestaurant;
+  late List<String> calledPhones;
+  late bool callWorks;
 
   setUpAll(() {
     registerFallbackValue(order('fallback'));
@@ -66,6 +94,11 @@ void main() {
   setUp(() {
     authCubit = MockAuthCubit();
     board = MockBoardCubit();
+    myRestaurant = MockMyRestaurantCubit();
+    calledPhones = [];
+    callWorks = true;
+    when(() => myRestaurant.state).thenReturn(restaurantLoaded());
+    when(() => myRestaurant.setOpen(any())).thenAnswer((_) async {});
     when(() => authCubit.state)
         .thenReturn(const AuthState.authenticated(owner));
     when(() => authCubit.signOut()).thenAnswer((_) async {});
@@ -76,6 +109,22 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
+  }
+
+  Future<bool> fakeCall(String phone) async {
+    calledPhones.add(phone);
+    return callWorks;
+  }
+
+  Widget boardApp() {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthCubit>.value(value: authCubit),
+        BlocProvider<RestaurantOrdersCubit>.value(value: board),
+        BlocProvider<MyRestaurantCubit>.value(value: myRestaurant),
+      ],
+      child: MaterialApp(home: RestaurantOrdersView(callPhone: fakeCall)),
+    );
   }
 
   Future<void> showBoard(
@@ -91,13 +140,7 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MultiBlocProvider(
-        providers: [
-          BlocProvider<AuthCubit>.value(value: authCubit),
-          BlocProvider<RestaurantOrdersCubit>.value(value: board),
-        ],
-        child: const MaterialApp(home: RestaurantOrdersView()),
-      ),
+      boardApp(),
     );
     await tester.pumpAndSettle();
   }
@@ -142,13 +185,7 @@ void main() {
     when(() => board.state).thenReturn(const RestaurantOrdersState());
 
     await tester.pumpWidget(
-      MultiBlocProvider(
-        providers: [
-          BlocProvider<AuthCubit>.value(value: authCubit),
-          BlocProvider<RestaurantOrdersCubit>.value(value: board),
-        ],
-        child: const MaterialApp(home: RestaurantOrdersView()),
-      ),
+      boardApp(),
     );
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -302,13 +339,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MultiBlocProvider(
-        providers: [
-          BlocProvider<AuthCubit>.value(value: authCubit),
-          BlocProvider<RestaurantOrdersCubit>.value(value: board),
-        ],
-        child: const MaterialApp(home: RestaurantOrdersView()),
-      ),
+      boardApp(),
     );
     // The spinner never stops, so we pump a little, not until settled.
     await tester.pump(const Duration(seconds: 1));
@@ -387,5 +418,112 @@ void main() {
     await tester.tap(find.byTooltip('Sign out'));
 
     verify(() => authCubit.signOut()).called(1);
+  });
+
+  testWidgets('the top bar shows the restaurant name', (tester) async {
+    await showBoard(tester, loaded());
+
+    expect(find.text('Kottu Corner'), findsOneWidget);
+    expect(find.text('Orders'), findsNothing);
+  });
+
+  testWidgets('the title says Orders until the restaurant loads',
+      (tester) async {
+    when(() => myRestaurant.state).thenReturn(const MyRestaurantState());
+
+    await showBoard(tester, loaded());
+
+    expect(find.text('Orders'), findsOneWidget);
+    expect(find.byType(Switch), findsNothing);
+  });
+
+  testWidgets('an open restaurant shows Open and no red strip',
+      (tester) async {
+    await showBoard(tester, loaded());
+
+    expect(find.text('Open'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    expect(find.text('Closed. Customers cannot order now.'), findsNothing);
+  });
+
+  testWidgets('a closed restaurant shows Closed and a red strip',
+      (tester) async {
+    when(() => myRestaurant.state)
+        .thenReturn(restaurantLoaded(isOpen: false));
+
+    await showBoard(tester, loaded());
+
+    expect(find.text('Closed'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+    expect(find.text('Closed. Customers cannot order now.'), findsOneWidget);
+  });
+
+  testWidgets('tapping the switch closes the restaurant', (tester) async {
+    await showBoard(tester, loaded());
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+
+    verify(() => myRestaurant.setOpen(false)).called(1);
+  });
+
+  testWidgets('the switch is locked while saving', (tester) async {
+    when(() => myRestaurant.state).thenReturn(
+      MyRestaurantState(
+        view: MyRestaurantView.loaded,
+        restaurant: kottu(),
+        isSaving: true,
+      ),
+    );
+
+    await showBoard(tester, loaded());
+
+    expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
+  });
+
+  testWidgets('a switch message shows in a bar', (tester) async {
+    final second = MyRestaurantState(
+      view: MyRestaurantView.loaded,
+      restaurant: kottu(isOpen: false),
+      notice: 'Your restaurant is closed. Customers cannot order.',
+      noticeId: 1,
+    );
+    whenListen(
+      myRestaurant,
+      Stream.value(second),
+      initialState: restaurantLoaded(),
+    );
+
+    await showBoard(tester, loaded());
+
+    expect(
+      find.text('Your restaurant is closed. Customers cannot order.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Call opens the phone app with the number', (tester) async {
+    await showBoard(tester, loaded(open: [order('abcdef1')]));
+
+    await tester.tap(find.text('Call'));
+    await tester.pumpAndSettle();
+
+    expect(calledPhones, ['0712345678']);
+  });
+
+  testWidgets('no Call button when there is no phone', (tester) async {
+    await showBoard(tester, loaded(open: [order('abcdef1', phone: '')]));
+
+    expect(find.text('Call'), findsNothing);
+  });
+
+  testWidgets('says so when the phone app cannot open', (tester) async {
+    callWorks = false;
+    await showBoard(tester, loaded(open: [order('abcdef1')]));
+
+    await tester.tap(find.text('Call'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Could not open the phone app.'), findsOneWidget);
   });
 }

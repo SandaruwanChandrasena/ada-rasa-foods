@@ -1,10 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../auth/presentation/auth_cubit.dart';
+import '../../restaurants/presentation/my_restaurant_cubit.dart';
 import '../domain/food_order.dart';
 import 'restaurant_order_card.dart';
 import 'restaurant_orders_cubit.dart';
@@ -24,17 +26,36 @@ class RestaurantOrdersScreen extends StatelessWidget {
       return const _NoRestaurantView();
     }
 
-    return BlocProvider<RestaurantOrdersCubit>(
+    return MultiBlocProvider(
       key: ValueKey(restaurantId),
-      create: (_) => sl<RestaurantOrdersCubit>()..start(restaurantId),
+      providers: [
+        BlocProvider<RestaurantOrdersCubit>(
+          create: (_) => sl<RestaurantOrdersCubit>()..start(restaurantId),
+        ),
+        BlocProvider<MyRestaurantCubit>(
+          create: (_) => sl<MyRestaurantCubit>()..start(restaurantId),
+        ),
+      ],
       child: const RestaurantOrdersView(),
     );
   }
 }
 
-// The board itself. Public, so tests can give it a mock cubit.
+// Opens the phone app. Gives false if it could not open.
+Future<bool> openDialer(String phone) async {
+  try {
+    return await launchUrl(Uri(scheme: 'tel', path: phone));
+  } catch (_) {
+    return false;
+  }
+}
+
+// The board itself. Public, so tests can give it mock cubits.
 class RestaurantOrdersView extends StatelessWidget {
-  const RestaurantOrdersView({super.key});
+  const RestaurantOrdersView({super.key, this.callPhone = openDialer});
+
+  // Tests give a fake, so no real phone app opens.
+  final Future<bool> Function(String phone) callPhone;
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +77,18 @@ class RestaurantOrdersView extends StatelessWidget {
               _showMessage(context, 'New order #${state.newOrderNumber}');
             },
           ),
+          BlocListener<MyRestaurantCubit, MyRestaurantState>(
+            listenWhen: (previous, current) =>
+                previous.noticeId != current.noticeId,
+            listener: (context, state) =>
+                _showMessage(context, state.notice),
+          ),
         ],
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('Orders'),
+            title: const _RestaurantName(),
             actions: [
+              const _OpenSwitch(),
               IconButton(
                 tooltip: 'Sign out',
                 icon: const Icon(Icons.logout),
@@ -72,45 +100,57 @@ class RestaurantOrdersView extends StatelessWidget {
               child: _BoardTabs(),
             ),
           ),
-          body: BlocBuilder<RestaurantOrdersCubit, RestaurantOrdersState>(
-            builder: (context, state) {
-              switch (state.view) {
-                case BoardView.loading:
-                  return const Center(child: CircularProgressIndicator());
-                case BoardView.failure:
-                  return _MessageView(
-                    icon: Icons.wifi_off_rounded,
-                    message: state.errorMessage ?? 'Something went wrong.',
-                    buttonText: 'Retry',
-                    onPressed: () =>
-                        context.read<RestaurantOrdersCubit>().retry(),
-                  );
-                case BoardView.loaded:
-                  return TabBarView(
-                    children: [
-                      _OrderList(
-                        orders: state.newOrders,
-                        emptyText: 'No new orders.',
-                      ),
-                      _OrderList(
-                        orders: state.activeOrders,
-                        emptyText: 'No active orders.',
-                      ),
-                      state.doneLoaded
-                          ? _OrderList(
-                              orders: state.done,
-                              emptyText: 'No finished orders yet.',
-                            )
-                          : const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                    ],
-                  );
-              }
-            },
+          body: Column(
+            children: [
+              const _ClosedBanner(),
+              Expanded(child: _board()),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _board() {
+    return BlocBuilder<RestaurantOrdersCubit, RestaurantOrdersState>(
+      builder: (context, state) {
+        switch (state.view) {
+          case BoardView.loading:
+            return const Center(child: CircularProgressIndicator());
+          case BoardView.failure:
+            return _MessageView(
+              icon: Icons.wifi_off_rounded,
+              message: state.errorMessage ?? 'Something went wrong.',
+              buttonText: 'Retry',
+              onPressed: () =>
+                  context.read<RestaurantOrdersCubit>().retry(),
+            );
+          case BoardView.loaded:
+            return TabBarView(
+              children: [
+                _OrderList(
+                  orders: state.newOrders,
+                  emptyText: 'No new orders.',
+                  callPhone: callPhone,
+                ),
+                _OrderList(
+                  orders: state.activeOrders,
+                  emptyText: 'No active orders.',
+                  callPhone: callPhone,
+                ),
+                state.doneLoaded
+                    ? _OrderList(
+                        orders: state.done,
+                        emptyText: 'No finished orders yet.',
+                        callPhone: callPhone,
+                      )
+                    : const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+              ],
+            );
+        }
+      },
     );
   }
 
@@ -119,6 +159,79 @@ class RestaurantOrdersView extends StatelessWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+// The restaurant name, or "Orders" until it loads.
+class _RestaurantName extends StatelessWidget {
+  const _RestaurantName();
+
+  @override
+  Widget build(BuildContext context) {
+    final name = context.select(
+      (MyRestaurantCubit cubit) => cubit.state.restaurant?.name,
+    );
+    return Text(
+      name == null || name.isEmpty ? 'Orders' : name,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+// "Open" or "Closed" with a switch (RES-4). Hidden until it loads.
+class _OpenSwitch extends StatelessWidget {
+  const _OpenSwitch();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<MyRestaurantCubit>().state;
+    final restaurant = state.restaurant;
+    if (state.view != MyRestaurantView.loaded || restaurant == null) {
+      return const SizedBox.shrink();
+    }
+
+    final open = restaurant.isOpen;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          open ? 'Open' : 'Closed',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: open ? Colors.green.shade700 : Colors.red.shade700,
+          ),
+        ),
+        Switch(
+          value: open,
+          onChanged: state.canSwitch
+              ? (value) => context.read<MyRestaurantCubit>().setOpen(value)
+              : null,
+        ),
+      ],
+    );
+  }
+}
+
+// A red strip while closed, so the owner knows why no orders come.
+class _ClosedBanner extends StatelessWidget {
+  const _ClosedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final closed = context.select(
+      (MyRestaurantCubit cubit) => cubit.state.restaurant?.isOpen == false,
+    );
+    if (!closed) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      color: Colors.red.shade50,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Text(
+        'Closed. Customers cannot order now.',
+        style: TextStyle(color: Colors.red.shade700),
+      ),
+    );
   }
 }
 
@@ -146,10 +259,15 @@ class _BoardTabs extends StatelessWidget {
 }
 
 class _OrderList extends StatelessWidget {
-  const _OrderList({required this.orders, required this.emptyText});
+  const _OrderList({
+    required this.orders,
+    required this.emptyText,
+    required this.callPhone,
+  });
 
   final List<FoodOrder> orders;
   final String emptyText;
+  final Future<bool> Function(String phone) callPhone;
 
   @override
   Widget build(BuildContext context) {
@@ -180,10 +298,21 @@ class _OrderList extends StatelessWidget {
             busy: busyIds.contains(order.id),
             onMove: (next) =>
                 context.read<RestaurantOrdersCubit>().move(order, next),
+            onCall: (phone) => _call(context, phone),
           ),
         );
       },
     );
+  }
+
+  Future<void> _call(BuildContext context, String phone) async {
+    final opened = await callPhone(phone);
+    if (opened || !context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Could not open the phone app.')),
+      );
   }
 }
 
