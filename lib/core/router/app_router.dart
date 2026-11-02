@@ -13,6 +13,7 @@ import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/orders/presentation/checkout_screen.dart';
 import '../../features/orders/presentation/my_orders_screen.dart';
 import '../../features/orders/presentation/order_status_screen.dart';
+import '../../features/orders/presentation/restaurant_orders_screen.dart';
 import '../../features/payments/presentation/add_card_screen.dart';
 import '../../features/payments/presentation/my_cards_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
@@ -157,10 +158,7 @@ GoRouter createRouter(AuthCubit authCubit) {
       ),
       GoRoute(
         path: AppRoutes.restaurant,
-        builder: (context, state) => const RoleHomePlaceholder(
-          title: 'Restaurant home',
-          nextStep: 'Next: orders board with New, Active, and Done (RES-1).',
-        ),
+        builder: (context, state) => const RestaurantOrdersScreen(),
       ),
       GoRoute(
         path: AppRoutes.admin,

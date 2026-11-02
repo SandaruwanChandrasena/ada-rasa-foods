@@ -20,6 +20,7 @@ import '../../features/orders/data/seen_order_repository_impl.dart';
 import '../../features/orders/domain/order_repository.dart';
 import '../../features/orders/domain/seen_order_repository.dart';
 import '../../features/orders/presentation/my_orders_cubit.dart';
+import '../../features/orders/presentation/restaurant_orders_cubit.dart';
 import '../../features/payments/data/card_repository_impl.dart';
 import '../../features/payments/domain/card_repository.dart';
 import '../../features/payments/presentation/cards_cubit.dart';
@@ -86,6 +87,11 @@ Future<void> initDependencies() async {
 
   // Singleton: the home banner and My orders share one list.
   sl.registerLazySingleton<MyOrdersCubit>(() => MyOrdersCubit(sl(), sl()));
+
+  // Factory: a new board cubit each time the restaurant home opens.
+  sl.registerFactory<RestaurantOrdersCubit>(
+    () => RestaurantOrdersCubit(sl()),
+  );
 
   // Saved demo cards (CUS-9)
   sl.registerLazySingleton<CardRepository>(() => CardRepositoryImpl(sl()));
