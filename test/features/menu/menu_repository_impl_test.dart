@@ -1,4 +1,6 @@
+import 'package:ada_rasa_foods/core/errors/data_failure.dart';
 import 'package:ada_rasa_foods/features/menu/data/menu_repository_impl.dart';
+import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -117,6 +119,138 @@ void main() {
       final dishes = await repository.watchMenu('r1').first;
 
       expect(dishes, isEmpty);
+    });
+  });
+
+  Future<void> addRestaurant(String id) {
+    return firestore.collection('restaurants').doc(id).set({'name': 'Kottu'});
+  }
+
+  Future<Map<String, dynamic>?> readRaw(String restaurantId, String id) async {
+    final doc = await firestore
+        .collection('restaurants')
+        .doc(restaurantId)
+        .collection('menuItems')
+        .doc(id)
+        .get();
+    return doc.data();
+  }
+
+  const newDish = Dish(
+    id: '',
+    restaurantId: 'r1',
+    name: 'Cheese Kottu',
+    price: 1500,
+    category: 'Kottu',
+    description: 'With extra cheese.',
+  );
+
+  Dish copy(Dish dish, {String? id, String? name, bool? available}) {
+    return Dish(
+      id: id ?? dish.id,
+      restaurantId: dish.restaurantId,
+      name: name ?? dish.name,
+      price: dish.price,
+      category: dish.category,
+      description: dish.description,
+      imageUrl: dish.imageUrl,
+      available: available ?? dish.available,
+    );
+  }
+
+  group('addDish', () {
+    test('saves exactly the allowed fields and gives back the id', () async {
+      await addRestaurant('r1');
+
+      final id = await repository.addDish(newDish);
+      final raw = await readRaw('r1', id);
+
+      expect(id, isNotEmpty);
+      expect(raw, {
+        'name': 'Cheese Kottu',
+        'description': 'With extra cheese.',
+        'price': 1500,
+        'imageUrl': '',
+        'category': 'Kottu',
+        'available': true,
+      });
+    });
+
+    test('the new dish shows in the live menu', () async {
+      await addRestaurant('r1');
+
+      final id = await repository.addDish(newDish);
+      final dishes = await repository.watchMenu('r1').first;
+
+      expect(dishes.single.id, id);
+      expect(dishes.single.name, 'Cheese Kottu');
+    });
+
+    test('fails when the restaurant does not exist', () async {
+      await expectLater(
+        repository.addDish(newDish),
+        throwsA(const DataFailure('This restaurant was not found.')),
+      );
+    });
+  });
+
+  group('updateDish', () {
+    test('saves the changes', () async {
+      await addRestaurant('r1');
+      final id = await repository.addDish(newDish);
+
+      await repository.updateDish(copy(newDish, id: id, name: 'Egg Kottu'));
+      final raw = await readRaw('r1', id);
+
+      expect(raw!['name'], 'Egg Kottu');
+      expect(raw['price'], 1500);
+    });
+
+    test('fails when the dish was deleted', () async {
+      await expectLater(
+        repository.updateDish(copy(newDish, id: 'missing')),
+        throwsA(const DataFailure('This dish was not found.')),
+      );
+      expect(await readRaw('r1', 'missing'), isNull);
+    });
+  });
+
+  group('deleteDish', () {
+    test('removes the dish', () async {
+      await addRestaurant('r1');
+      final id = await repository.addDish(newDish);
+
+      await repository.deleteDish(copy(newDish, id: id));
+
+      expect(await readRaw('r1', id), isNull);
+    });
+
+    test('fails when the dish is already gone', () async {
+      await expectLater(
+        repository.deleteDish(copy(newDish, id: 'missing')),
+        throwsA(const DataFailure('This dish was not found.')),
+      );
+    });
+  });
+
+  group('setAvailable', () {
+    test('changes only available', () async {
+      await addRestaurant('r1');
+      final id = await repository.addDish(newDish);
+
+      await repository.setAvailable(copy(newDish, id: id), available: false);
+      final raw = await readRaw('r1', id);
+
+      expect(raw!['available'], isFalse);
+      expect(raw['name'], 'Cheese Kottu');
+      expect(raw.keys, hasLength(6));
+    });
+
+    test('fails when the dish is gone', () async {
+      await expectLater(
+        repository.setAvailable(copy(newDish, id: 'missing'), available: true),
+        throwsA(const DataFailure('This dish was not found.')),
+      );
     });
   });
 }

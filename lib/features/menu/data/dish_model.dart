@@ -1,6 +1,7 @@
 import '../domain/dish.dart';
 
-// Turns a restaurants/{id}/menuItems/{itemId} document into a Dish.
+// Turns a restaurants/{id}/menuItems/{itemId} document into a Dish,
+// and back.
 class DishModel {
   const DishModel._();
 
@@ -21,5 +22,17 @@ class DishModel {
       imageUrl: map['imageUrl'] as String? ?? '',
       available: map['available'] as bool? ?? false,
     );
+  }
+
+  // Exactly the fields the Firestore rules allow (isValidMenuItem).
+  static Map<String, dynamic> toMap(Dish dish) {
+    return {
+      'name': dish.name,
+      'description': dish.description,
+      'price': dish.price,
+      'imageUrl': dish.imageUrl,
+      'category': dish.category,
+      'available': dish.available,
+    };
   }
 }
