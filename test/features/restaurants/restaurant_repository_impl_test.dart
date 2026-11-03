@@ -180,6 +180,68 @@ void main() {
     });
   });
 
+  group('setImageUrl', () {
+    const photo = 'https://res.cloudinary.com/dtmcqgolr/shop.jpg';
+
+    Future<Map<String, dynamic>> readRaw(String id) async {
+      final doc = await firestore.collection('restaurants').doc(id).get();
+      return doc.data()!;
+    }
+
+    test('saves the new photo link', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+
+      await repository.setImageUrl('r1', photo);
+
+      expect((await readRaw('r1'))['imageUrl'], photo);
+    });
+
+    test('an empty link removes the photo', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      await repository.setImageUrl('r1', photo);
+
+      await repository.setImageUrl('r1', '');
+
+      expect((await readRaw('r1'))['imageUrl'], '');
+    });
+
+    test('changes only imageUrl', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      final before = await readRaw('r1');
+
+      await repository.setImageUrl('r1', photo);
+      final after = await readRaw('r1');
+
+      expect(after.keys.toSet(), before.keys.toSet());
+      expect(after['name'], before['name']);
+      expect(after['isOpen'], before['isOpen']);
+      expect(after['isActive'], before['isActive']);
+      expect(after['createdAt'], before['createdAt']);
+    });
+
+    test('sends a live update to watchRestaurant', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      final results = <Restaurant?>[];
+      final subscription =
+          repository.watchRestaurant('r1').listen(results.add);
+      await settle();
+
+      await repository.setImageUrl('r1', photo);
+      await settle();
+
+      expect(results.first!.hasImage, isFalse);
+      expect(results.last!.imageUrl, photo);
+      await subscription.cancel();
+    });
+
+    test('fails when the restaurant does not exist', () async {
+      await expectLater(
+        repository.setImageUrl('missing', photo),
+        throwsA(const DataFailure('This restaurant was not found.')),
+      );
+    });
+  });
+
   group('Restaurant helpers', () {
     const openRestaurant = Restaurant(
       id: 'r1',

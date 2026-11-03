@@ -62,4 +62,21 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
       throw toDataFailure(error);
     }
   }
+
+  @override
+  Future<void> setImageUrl(String restaurantId, String imageUrl) async {
+    final ref = _restaurants.doc(restaurantId);
+
+    try {
+      final doc = await ref.get(const GetOptions(source: Source.server));
+      if (!doc.exists) {
+        throw const DataFailure('This restaurant was not found.');
+      }
+
+      // The rules let the owner change only isOpen and imageUrl.
+      await ref.update({'imageUrl': imageUrl});
+    } catch (error) {
+      throw toDataFailure(error);
+    }
+  }
 }

@@ -11,4 +11,7 @@ abstract class RestaurantRepository {
 
   // The owner opens or closes the restaurant (RES-4).
   Future<void> setOpen(String restaurantId, {required bool isOpen});
+
+  // The owner changes the restaurant photo. Empty removes it (RES-3).
+  Future<void> setImageUrl(String restaurantId, String imageUrl);
 }
