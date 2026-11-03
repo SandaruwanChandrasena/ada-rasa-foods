@@ -8,6 +8,7 @@ import '../../../core/widgets/fade_slide_in.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../menu/presentation/menu_manage_cubit.dart';
 import '../../restaurants/presentation/my_restaurant_cubit.dart';
+import '../../restaurants/presentation/restaurant_photo_cubit.dart';
 import '../../restaurants/presentation/restaurant_shell.dart';
 import '../domain/food_order.dart';
 import 'restaurant_order_card.dart';
@@ -37,6 +38,14 @@ class RestaurantOrdersScreen extends StatelessWidget {
         ),
         BlocProvider<MyRestaurantCubit>(
           create: (_) => sl<MyRestaurantCubit>()..start(restaurantId),
+        ),
+        BlocProvider<RestaurantPhotoCubit>(
+          create: (_) => RestaurantPhotoCubit(
+            sl(),
+            uploader: sl(),
+            picker: sl(),
+            restaurantId: restaurantId,
+          ),
         ),
         BlocProvider<MenuManageCubit>(
           create: (_) => sl<MenuManageCubit>()..start(restaurantId),

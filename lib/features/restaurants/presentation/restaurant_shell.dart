@@ -9,6 +9,7 @@ import '../../menu/presentation/dish_form_screen.dart';
 import '../../menu/presentation/menu_manage_cubit.dart';
 import '../../menu/presentation/menu_manage_screen.dart';
 import '../../orders/presentation/restaurant_orders_screen.dart';
+import 'restaurant_photo_card.dart';
 
 // Opens the Add or Edit dish page.
 void openDishPage(BuildContext context, DishFormArgs args) {
@@ -83,9 +84,16 @@ class _MenuPage extends StatelessWidget {
           ),
         ],
       ),
-      body: MenuManageView(
-        onAdd: () => _open(context),
-        onEdit: (dish) => _open(context, dish: dish),
+      body: Column(
+        children: [
+          const RestaurantPhotoCard(),
+          Expanded(
+            child: MenuManageView(
+              onAdd: () => _open(context),
+              onEdit: (dish) => _open(context, dish: dish),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -10,6 +10,7 @@ import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_cu
 import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_state.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/my_restaurant_cubit.dart';
+import 'package:ada_rasa_foods/features/restaurants/presentation/restaurant_photo_cubit.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/restaurant_shell.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,6 +28,9 @@ class MockMyRestaurantCubit extends MockCubit<MyRestaurantState>
 
 class MockMenuManageCubit extends MockCubit<MenuManageState>
     implements MenuManageCubit {}
+
+class MockRestaurantPhotoCubit extends MockCubit<RestaurantPhotoState>
+    implements RestaurantPhotoCubit {}
 
 const owner = AppUser(
   uid: 'o1',
@@ -64,6 +68,7 @@ void main() {
   late MockBoardCubit board;
   late MockMyRestaurantCubit myRestaurant;
   late MockMenuManageCubit menu;
+  late MockRestaurantPhotoCubit photo;
   late List<DishFormArgs> opened;
 
   setUp(() {
@@ -71,6 +76,7 @@ void main() {
     board = MockBoardCubit();
     myRestaurant = MockMyRestaurantCubit();
     menu = MockMenuManageCubit();
+    photo = MockRestaurantPhotoCubit();
     opened = [];
     when(() => authCubit.state)
         .thenReturn(const AuthState.authenticated(owner));
@@ -85,6 +91,7 @@ void main() {
     when(() => menu.state).thenReturn(
       const MenuManageState(view: MenuView.loaded, dishes: [cheeseKottu]),
     );
+    when(() => photo.state).thenReturn(const RestaurantPhotoState());
   });
 
   Future<void> show(WidgetTester tester) async {
@@ -99,6 +106,7 @@ void main() {
           BlocProvider<RestaurantOrdersCubit>.value(value: board),
           BlocProvider<MyRestaurantCubit>.value(value: myRestaurant),
           BlocProvider<MenuManageCubit>.value(value: menu),
+          BlocProvider<RestaurantPhotoCubit>.value(value: photo),
         ],
         child: MaterialApp(
           home: RestaurantShell(
@@ -154,6 +162,15 @@ void main() {
     expect(onScreen('Cheese Kottu'), findsOneWidget);
     expect(onScreen('Add dish'), findsOneWidget);
     expect(onScreen('No new orders.'), findsNothing);
+  });
+
+  testWidgets('Menu shows the restaurant photo card', (tester) async {
+    await show(tester);
+
+    await openTab(tester, 'Menu');
+
+    expect(onScreen('Restaurant photo'), findsOneWidget);
+    expect(onScreen('Choose photo'), findsOneWidget);
   });
 
   testWidgets('Orders brings the board back', (tester) async {
