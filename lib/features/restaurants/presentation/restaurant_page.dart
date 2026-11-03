@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../cart/presentation/add_to_cart_button.dart';
 import '../../cart/presentation/cart_bar.dart';
@@ -132,6 +134,9 @@ class _LoadedView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: DishRow(
                       dish: dish,
+                      onTap: () => context.push(
+                        AppRoutes.dishDetails(restaurant.id, dish.id),
+                      ),
                       trailing: AddToCartButton(
                         dish: dish,
                         restaurantName: restaurant.name,

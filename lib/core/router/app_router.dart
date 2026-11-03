@@ -21,6 +21,7 @@ import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/settings_screen.dart';
 import '../../features/restaurants/presentation/customer_home_screen.dart';
+import '../../features/restaurants/presentation/dish_details_page.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../widgets/role_home_placeholder.dart';
 
@@ -38,6 +39,10 @@ class AppRoutes {
   // Restaurant page inside the customer area (CUS-2).
   static String restaurantPage(String restaurantId) =>
       '$customer/restaurant/$restaurantId';
+
+  // Dish details page, under its restaurant page (CUS-14).
+  static String dishDetails(String restaurantId, String dishId) =>
+      '${restaurantPage(restaurantId)}/dish/$dishId';
 
   // Cart screen inside the customer area (CUS-3).
   static const String cart = '$customer/cart';
@@ -119,6 +124,15 @@ GoRouter createRouter(AuthCubit authCubit) {
             path: 'restaurant/:id',
             builder: (context, state) =>
                 RestaurantPage(restaurantId: state.pathParameters['id']!),
+            routes: [
+              GoRoute(
+                path: 'dish/:dishId',
+                builder: (context, state) => DishDetailsPage(
+                  restaurantId: state.pathParameters['id']!,
+                  dishId: state.pathParameters['dishId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'cart',

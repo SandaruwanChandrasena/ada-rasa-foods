@@ -7,12 +7,21 @@ import '../domain/dish.dart';
 
 // One dish on the restaurant page.
 class DishRow extends StatelessWidget {
-  const DishRow({super.key, required this.dish, this.trailing});
+  const DishRow({
+    super.key,
+    required this.dish,
+    this.trailing,
+    this.onTap,
+  });
 
   final Dish dish;
 
   // Shown next to the price, like the Add button from the cart feature.
   final Widget? trailing;
+
+  // When given, the row becomes a card with a soft border that opens the
+  // dish page (CUS-14). Taps on [trailing] still go to [trailing].
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -65,21 +74,38 @@ class DishRow extends StatelessWidget {
       ],
     );
 
-    if (dish.available) {
+    // Not available: faded, with a label on top.
+    final body = dish.available
+        ? content
+        : Stack(
+            children: [
+              Opacity(opacity: 0.4, child: content),
+              const Positioned(top: 0, right: 0, child: _NotAvailableLabel()),
+            ],
+          );
+
+    final tap = onTap;
+    if (tap == null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: content,
+        child: body,
       );
     }
 
-    // Not available: faded, with a label on top.
+    // A border, not a shadow, so long menus scroll smoothly.
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Stack(
-        children: [
-          Opacity(opacity: 0.4, child: content),
-          const Positioned(top: 0, right: 0, child: _NotAvailableLabel()),
-        ],
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Material(
+        color: Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: tap,
+          child: Padding(padding: const EdgeInsets.all(10), child: body),
+        ),
       ),
     );
   }
