@@ -72,19 +72,26 @@ class RestaurantPhotoCubit extends Cubit<RestaurantPhotoState> {
   final PhotoPicker _picker;
   final String _restaurantId;
 
+  // True while the gallery or the "Use this photo?" sheet is open.
+  bool _picking = false;
+
   static const String savedMessage = 'Restaurant photo is saved.';
   static const String removedMessage = 'Restaurant photo is removed.';
 
-  // No Save button here, so the photo uploads right after picking.
-  Future<void> pickAndUpload() async {
-    if (state.isBusy) return;
+  // No Save button here, so the photo uploads right after the owner
+  // taps Use photo in the [confirm] sheet.
+  Future<void> pickAndUpload({required ConfirmPhoto confirm}) async {
+    if (state.isBusy || _picking) return;
 
     String? path;
+    _picking = true;
     try {
-      path = await _picker.pickFromGallery();
+      path = await _pickConfirmed(confirm);
     } catch (error) {
       _failed(error);
       return;
+    } finally {
+      _picking = false;
     }
     if (path == null || isClosed) return;
 
@@ -118,10 +125,30 @@ class RestaurantPhotoCubit extends Cubit<RestaurantPhotoState> {
     }
   }
 
+  // Opens the gallery again after Pick another.
+  // Null when the owner closes the gallery or taps Cancel.
+  Future<String?> _pickConfirmed(ConfirmPhoto confirm) async {
+    while (true) {
+      final path = await _picker.pickFromGallery();
+      if (path == null || isClosed) return null;
+
+      final choice = await confirm(path);
+      if (isClosed) return null;
+      switch (choice) {
+        case PhotoChoice.use:
+          return path;
+        case PhotoChoice.cancel:
+          return null;
+        case PhotoChoice.pickAnother:
+          continue;
+      }
+    }
+  }
+
   // Clears the link only. Cloudinary files can't be deleted from the app.
   // The page asks "Remove the restaurant photo?" before calling this.
   Future<void> removePhoto() async {
-    if (state.isBusy) return;
+    if (state.isBusy || _picking) return;
 
     emit(state.copyWith(status: RestaurantPhotoStatus.saving));
     try {

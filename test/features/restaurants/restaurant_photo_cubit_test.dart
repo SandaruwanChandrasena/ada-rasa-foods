@@ -17,6 +17,9 @@ class MockPhotoPicker extends Mock implements PhotoPicker {}
 const pickedPath = '/cache/shop.jpg';
 const newUrl = 'https://res.cloudinary.com/dtmcqgolr/shop.jpg';
 
+// The owner taps Use photo in the sheet.
+Future<PhotoChoice> useIt(String path) async => PhotoChoice.use;
+
 void main() {
   late MockRestaurantRepository repository;
   late MockImageUploader uploader;
@@ -70,7 +73,7 @@ void main() {
     test('uploads the picked photo and saves its link', () async {
       final cubit = makeCubit();
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       verify(
         () => uploader.upload(
@@ -91,7 +94,7 @@ void main() {
       final states = <RestaurantPhotoState>[];
       final sub = cubit.stream.listen(states.add);
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
       // The stream sends states a little later, so let them all arrive.
       await Future<void>.delayed(Duration.zero);
       await sub.cancel();
@@ -109,7 +112,7 @@ void main() {
       when(() => picker.pickFromGallery()).thenAnswer((_) async => null);
       final cubit = makeCubit();
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       expect(cubit.state, const RestaurantPhotoState());
       verifyNoUpload();
@@ -122,7 +125,7 @@ void main() {
       );
       final cubit = makeCubit();
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       expect(cubit.state.notice, 'Could not open your photos.');
       expect(cubit.state.isBusy, isFalse);
@@ -137,7 +140,7 @@ void main() {
       );
       final cubit = makeCubit();
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       verifyNever(() => repository.setImageUrl(any(), any()));
       expect(cubit.state.status, RestaurantPhotoStatus.idle);
@@ -155,7 +158,7 @@ void main() {
       );
       final cubit = makeCubit();
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       expect(cubit.state.status, RestaurantPhotoStatus.idle);
       expect(cubit.state.photoPath, isNull);
@@ -167,7 +170,7 @@ void main() {
           .thenThrow(Exception('boom'));
       final cubit = makeCubit();
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       expect(
         cubit.state.notice,
@@ -180,10 +183,10 @@ void main() {
         () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
       ).thenThrow(const DataFailure('The photo could not be uploaded.'));
       final cubit = makeCubit();
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       stubUpload();
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
 
       verify(() => repository.setImageUrl('r1', newUrl)).called(1);
       expect(cubit.state.notice, 'Restaurant photo is saved.');
@@ -197,11 +200,11 @@ void main() {
       ).thenAnswer((_) => done.future);
       final cubit = makeCubit();
 
-      final first = cubit.pickAndUpload();
+      final first = cubit.pickAndUpload(confirm: useIt);
       await Future<void>.delayed(Duration.zero);
       expect(cubit.state.isUploading, isTrue);
 
-      await cubit.pickAndUpload();
+      await cubit.pickAndUpload(confirm: useIt);
       await cubit.removePhoto();
       done.complete(newUrl);
       await first;
@@ -209,6 +212,94 @@ void main() {
       verify(() => picker.pickFromGallery()).called(1);
       verify(() => repository.setImageUrl('r1', newUrl)).called(1);
       verifyNever(() => repository.setImageUrl('r1', ''));
+    });
+  });
+
+  group('Use this photo sheet', () {
+    test('the sheet gets the picked photo', () async {
+      final shown = <String>[];
+      final cubit = makeCubit();
+
+      await cubit.pickAndUpload(
+        confirm: (path) async {
+          shown.add(path);
+          return PhotoChoice.use;
+        },
+      );
+
+      expect(shown, [pickedPath]);
+    });
+
+    test('Cancel uploads nothing and changes nothing', () async {
+      final cubit = makeCubit();
+
+      await cubit.pickAndUpload(confirm: (_) async => PhotoChoice.cancel);
+
+      expect(cubit.state, const RestaurantPhotoState());
+      verifyNoUpload();
+      verifyNever(() => repository.setImageUrl(any(), any()));
+    });
+
+    test('Pick another opens the gallery again and uses the new photo',
+        () async {
+      final paths = ['/cache/first.jpg', '/cache/second.jpg'];
+      when(() => picker.pickFromGallery())
+          .thenAnswer((_) async => paths.removeAt(0));
+      final choices = [PhotoChoice.pickAnother, PhotoChoice.use];
+      final cubit = makeCubit();
+
+      await cubit.pickAndUpload(confirm: (_) async => choices.removeAt(0));
+
+      verify(() => picker.pickFromGallery()).called(2);
+      verify(
+        () => uploader.upload(
+          '/cache/second.jpg',
+          onProgress: any(named: 'onProgress'),
+        ),
+      ).called(1);
+      verify(() => repository.setImageUrl('r1', newUrl)).called(1);
+    });
+
+    test('Pick another, then closing the gallery, uploads nothing',
+        () async {
+      final paths = <String?>[pickedPath, null];
+      when(() => picker.pickFromGallery())
+          .thenAnswer((_) async => paths.removeAt(0));
+      final cubit = makeCubit();
+
+      await cubit.pickAndUpload(
+        confirm: (_) async => PhotoChoice.pickAnother,
+      );
+
+      verify(() => picker.pickFromGallery()).called(2);
+      verifyNoUpload();
+      expect(cubit.state, const RestaurantPhotoState());
+    });
+
+    test('taps while the sheet is open do nothing', () async {
+      final answer = Completer<PhotoChoice>();
+      final cubit = makeCubit();
+
+      final first = cubit.pickAndUpload(confirm: (_) => answer.future);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.pickAndUpload(confirm: useIt);
+      await cubit.removePhoto();
+      answer.complete(PhotoChoice.use);
+      await first;
+
+      verify(() => picker.pickFromGallery()).called(1);
+      verify(() => repository.setImageUrl('r1', newUrl)).called(1);
+      verifyNever(() => repository.setImageUrl('r1', ''));
+    });
+
+    test('after the sheet closes, a new pick works', () async {
+      final cubit = makeCubit();
+      await cubit.pickAndUpload(confirm: (_) async => PhotoChoice.cancel);
+
+      await cubit.pickAndUpload(confirm: useIt);
+
+      verify(() => repository.setImageUrl('r1', newUrl)).called(1);
     });
   });
 

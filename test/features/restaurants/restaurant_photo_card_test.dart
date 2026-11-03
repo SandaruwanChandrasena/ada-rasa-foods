@@ -1,3 +1,5 @@
+import 'package:ada_rasa_foods/core/widgets/photo_confirm_sheet.dart';
+import 'package:ada_rasa_foods/features/menu/domain/photo_picker.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/my_restaurant_cubit.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/restaurant_photo_card.dart';
@@ -41,11 +43,19 @@ void main() {
   late MockMyRestaurantCubit myRestaurant;
   late MockRestaurantPhotoCubit photo;
 
+  // any() needs a sample value for the confirm function type.
+  setUpAll(() {
+    Future<PhotoChoice> fallback(String path) async => PhotoChoice.cancel;
+    registerFallbackValue(fallback);
+  });
+
   setUp(() {
     myRestaurant = MockMyRestaurantCubit();
     photo = MockRestaurantPhotoCubit();
     when(() => photo.state).thenReturn(const RestaurantPhotoState());
-    when(() => photo.pickAndUpload()).thenAnswer((_) async {});
+    when(
+      () => photo.pickAndUpload(confirm: any(named: 'confirm')),
+    ).thenAnswer((_) async {});
     when(() => photo.removePhoto()).thenAnswer((_) async {});
   });
 
@@ -108,7 +118,7 @@ void main() {
     await tester.tap(find.text('Choose photo'));
     await tester.pump();
 
-    verify(() => photo.pickAndUpload()).called(1);
+    verify(() => photo.pickAndUpload(confirm: any(named: 'confirm'))).called(1);
   });
 
   testWidgets('tapping the photo also starts the pick', (tester) async {
@@ -117,7 +127,25 @@ void main() {
     await tester.tap(find.byKey(const Key('restaurant-photo-box')));
     await tester.pump();
 
-    verify(() => photo.pickAndUpload()).called(1);
+    verify(() => photo.pickAndUpload(confirm: any(named: 'confirm'))).called(1);
+  });
+
+  testWidgets('the pick shows the Use this photo sheet', (tester) async {
+    await show(tester, restaurant: noPhoto);
+    await tester.tap(find.text('Choose photo'));
+    await tester.pump();
+    final confirm = verify(
+      () => photo.pickAndUpload(confirm: captureAny(named: 'confirm')),
+    ).captured.single as ConfirmPhoto;
+
+    final choice = confirm(pickedPath);
+    await tester.pumpAndSettle();
+    expect(find.byType(PhotoConfirmSheet), findsOneWidget);
+    await tester.tap(find.text('Use photo'));
+    await tester.pumpAndSettle();
+
+    expect(await choice, PhotoChoice.use);
+    expect(find.byType(PhotoConfirmSheet), findsNothing);
   });
 
   testWidgets('uploading shows the picked photo and the progress',
@@ -151,7 +179,7 @@ void main() {
     await tester.tap(find.byKey(const Key('restaurant-photo-box')));
     await tester.pump();
 
-    verifyNever(() => photo.pickAndUpload());
+    verifyNever(() => photo.pickAndUpload(confirm: any(named: 'confirm')));
   });
 
   testWidgets('Remove photo asks first, and Cancel keeps it',

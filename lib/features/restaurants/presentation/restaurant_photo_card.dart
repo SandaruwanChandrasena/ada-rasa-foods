@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/food_image.dart';
+import '../../../core/widgets/photo_confirm_sheet.dart';
+import '../../menu/domain/photo_picker.dart';
 import 'my_restaurant_cubit.dart';
 import 'restaurant_photo_cubit.dart';
 
@@ -34,7 +36,6 @@ class RestaurantPhotoCard extends StatelessWidget {
           ..showSnackBar(SnackBar(content: Text(notice)));
       },
       builder: (context, state) {
-        final cubit = context.read<RestaurantPhotoCubit>();
         final hasPhoto = restaurant.hasImage;
         final textTheme = Theme.of(context).textTheme;
 
@@ -56,7 +57,7 @@ class RestaurantPhotoCard extends StatelessWidget {
                       _Thumbnail(
                         imageUrl: restaurant.imageUrl,
                         photoPath: state.photoPath,
-                        onTap: state.isBusy ? null : cubit.pickAndUpload,
+                        onTap: state.isBusy ? null : () => _pick(context),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -124,13 +125,12 @@ class RestaurantPhotoCard extends StatelessWidget {
       );
     }
 
-    final cubit = context.read<RestaurantPhotoCubit>();
     // Wrap, not Row, so long button text never overflows.
     return Wrap(
       spacing: 4,
       children: [
         TextButton(
-          onPressed: cubit.pickAndUpload,
+          onPressed: () => _pick(context),
           child: Text(hasPhoto ? 'Change photo' : 'Choose photo'),
         ),
         if (hasPhoto)
@@ -139,6 +139,16 @@ class RestaurantPhotoCard extends StatelessWidget {
             child: const Text('Remove photo'),
           ),
       ],
+    );
+  }
+
+  // The owner sees the photo big and taps Use photo before it uploads.
+  Future<void> _pick(BuildContext context) {
+    return context.read<RestaurantPhotoCubit>().pickAndUpload(
+      confirm: (path) async {
+        if (!context.mounted) return PhotoChoice.cancel;
+        return showPhotoConfirmSheet(context, path);
+      },
     );
   }
 
