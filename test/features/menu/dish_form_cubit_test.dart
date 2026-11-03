@@ -2,13 +2,22 @@ import 'dart:async';
 
 import 'package:ada_rasa_foods/core/errors/data_failure.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
+import 'package:ada_rasa_foods/features/menu/domain/image_uploader.dart';
 import 'package:ada_rasa_foods/features/menu/domain/menu_repository.dart';
+import 'package:ada_rasa_foods/features/menu/domain/photo_picker.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/dish_form_cubit.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/dish_form_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockMenuRepository extends Mock implements MenuRepository {}
+
+class MockImageUploader extends Mock implements ImageUploader {}
+
+class MockPhotoPicker extends Mock implements PhotoPicker {}
+
+const pickedPath = '/cache/picked.jpg';
+const newUrl = 'https://res.cloudinary.com/dtmcqgolr/new.jpg';
 
 const kottu = Dish(
   id: 'd1',
@@ -22,20 +31,61 @@ const kottu = Dish(
 
 void main() {
   late MockMenuRepository repository;
+  late MockImageUploader uploader;
+  late MockPhotoPicker picker;
 
   setUpAll(() => registerFallbackValue(kottu));
+
+  // The upload reports 0.5 and then 1, like a real upload.
+  void stubUpload() {
+    when(
+      () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+    ).thenAnswer((call) async {
+      final onProgress =
+          call.namedArguments[#onProgress] as void Function(double)?;
+      onProgress?.call(0.5);
+      onProgress?.call(1);
+      return newUrl;
+    });
+  }
 
   setUp(() {
     repository = MockMenuRepository();
     when(() => repository.addDish(any())).thenAnswer((_) async => 'new1');
     when(() => repository.updateDish(any())).thenAnswer((_) async {});
     when(() => repository.deleteDish(any())).thenAnswer((_) async {});
+
+    uploader = MockImageUploader();
+    picker = MockPhotoPicker();
+    when(() => picker.pickFromGallery()).thenAnswer((_) async => pickedPath);
+    stubUpload();
   });
 
-  DishFormCubit addForm() => DishFormCubit(repository, restaurantId: 'r1');
+  void verifyNoUpload() => verifyNever(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      );
 
-  DishFormCubit editForm() =>
-      DishFormCubit(repository, restaurantId: 'r1', dish: kottu);
+  DishFormCubit addForm() => DishFormCubit(
+        repository,
+        uploader: uploader,
+        picker: picker,
+        restaurantId: 'r1',
+      );
+
+  DishFormCubit editForm() => DishFormCubit(
+        repository,
+        uploader: uploader,
+        picker: picker,
+        restaurantId: 'r1',
+        dish: kottu,
+      );
+
+  Dish savedNewDish() =>
+      verify(() => repository.addDish(captureAny())).captured.single as Dish;
+
+  Dish savedEditedDish() =>
+      verify(() => repository.updateDish(captureAny())).captured.single
+          as Dish;
 
   void fill(
     DishFormCubit cubit, {
@@ -232,6 +282,218 @@ void main() {
 
       expect(cubit.state.status, DishFormStatus.editing);
       expect(cubit.state.notice, 'This dish was not found.');
+    });
+  });
+
+  group('photo', () {
+    test('picking a photo shows it, but does not upload', () async {
+      final cubit = addForm();
+
+      await cubit.pickPhoto();
+
+      expect(cubit.state.photoPath, pickedPath);
+      expect(cubit.state.needsUpload, isTrue);
+      verifyNoUpload();
+    });
+
+    test('closing the gallery changes nothing', () async {
+      when(() => picker.pickFromGallery()).thenAnswer((_) async => null);
+      final cubit = editForm();
+      final before = cubit.state;
+
+      await cubit.pickPhoto();
+
+      expect(cubit.state, before);
+    });
+
+    test('a gallery error shows the reason and no photo', () async {
+      when(() => picker.pickFromGallery()).thenThrow(
+        const DataFailure('Could not open your photos.'),
+      );
+      final cubit = addForm();
+
+      await cubit.pickPhoto();
+
+      expect(cubit.state.photoPath, isNull);
+      expect(cubit.state.notice, 'Could not open your photos.');
+      expect(cubit.state.noticeId, 1);
+    });
+
+    test('remove photo clears the saved and the picked photo', () async {
+      final cubit = editForm();
+      await cubit.pickPhoto();
+
+      cubit.removePhoto();
+
+      expect(cubit.state.hasPhoto, isFalse);
+      expect(cubit.state.needsUpload, isFalse);
+    });
+
+    test('saving after remove saves an empty link', () async {
+      final cubit = editForm()..removePhoto();
+
+      await cubit.save();
+
+      expect(savedEditedDish().imageUrl, '');
+      verifyNoUpload();
+    });
+  });
+
+  group('save with a photo', () {
+    test('a new dish uploads the photo, then saves its link', () async {
+      final cubit = addForm();
+      fill(cubit);
+      await cubit.pickPhoto();
+
+      await cubit.save();
+
+      verify(
+        () => uploader.upload(
+          pickedPath,
+          onProgress: any(named: 'onProgress'),
+        ),
+      ).called(1);
+      expect(savedNewDish().imageUrl, newUrl);
+      expect(cubit.state.status, DishFormStatus.saved);
+      expect(cubit.state.photoPath, isNull);
+    });
+
+    test('it shows uploading with progress, then saving', () async {
+      final cubit = addForm();
+      fill(cubit);
+      await cubit.pickPhoto();
+      final states = <DishFormState>[];
+      final sub = cubit.stream.listen(states.add);
+
+      await cubit.save();
+      // The stream sends states a little later, so let them all arrive.
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+
+      final uploading = states.where((s) => s.isUploading).toList();
+      expect(
+        uploading.map((s) => s.uploadProgress),
+        [0, 0.5, 1],
+      );
+      final firstSaving = states.indexWhere(
+        (s) => s.status == DishFormStatus.saving,
+      );
+      expect(firstSaving, greaterThan(states.indexOf(uploading.last)));
+    });
+
+    test('an edit with a new photo saves the new link', () async {
+      final cubit = editForm();
+      await cubit.pickPhoto();
+
+      await cubit.save();
+
+      expect(savedEditedDish().imageUrl, newUrl);
+    });
+
+    test('no new photo means no upload', () async {
+      final cubit = editForm()..priceChanged('1300');
+
+      await cubit.save();
+
+      verifyNoUpload();
+      expect(savedEditedDish().imageUrl, kottu.imageUrl);
+    });
+
+    test('a form with errors does not upload', () async {
+      final cubit = addForm();
+      await cubit.pickPhoto();
+
+      await cubit.save();
+
+      verifyNoUpload();
+      expect(cubit.state.showErrors, isTrue);
+      expect(cubit.state.photoPath, pickedPath);
+    });
+
+    test('a failed upload saves nothing and keeps the photo', () async {
+      when(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      ).thenThrow(
+        const DataFailure('No internet connection. Please try again.'),
+      );
+      final cubit = addForm();
+      fill(cubit);
+      await cubit.pickPhoto();
+
+      await cubit.save();
+
+      verifyNever(() => repository.addDish(any()));
+      expect(cubit.state.status, DishFormStatus.editing);
+      expect(cubit.state.photoPath, pickedPath);
+      expect(
+        cubit.state.notice,
+        'No internet connection. Please try again.',
+      );
+    });
+
+    test('Save again after a failed upload uploads and saves', () async {
+      when(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      ).thenThrow(const DataFailure('The photo could not be uploaded.'));
+      final cubit = addForm();
+      fill(cubit);
+      await cubit.pickPhoto();
+      await cubit.save();
+
+      stubUpload();
+      await cubit.save();
+
+      expect(savedNewDish().imageUrl, newUrl);
+      expect(cubit.state.status, DishFormStatus.saved);
+    });
+
+    test('if the save fails after the upload, Save again does not upload',
+        () async {
+      when(() => repository.addDish(any())).thenThrow(
+        const DataFailure('No internet connection. Please try again.'),
+      );
+      final cubit = addForm();
+      fill(cubit);
+      await cubit.pickPhoto();
+      await cubit.save();
+      expect(cubit.state.photoUrl, newUrl);
+
+      when(() => repository.addDish(any())).thenAnswer((_) async => 'new1');
+      await cubit.save();
+
+      verify(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      ).called(1);
+      final saved = verify(() => repository.addDish(captureAny()))
+          .captured
+          .last as Dish;
+      expect(saved.imageUrl, newUrl);
+    });
+
+    test('a second Save tap while uploading does nothing', () async {
+      final done = Completer<String>();
+      when(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      ).thenAnswer((_) => done.future);
+      final cubit = addForm();
+      fill(cubit);
+      await cubit.pickPhoto();
+
+      final first = cubit.save();
+      expect(cubit.state.isUploading, isTrue);
+      expect(cubit.state.isBusy, isTrue);
+
+      await cubit.save();
+      await cubit.pickPhoto();
+      cubit.removePhoto();
+      done.complete(newUrl);
+      await first;
+
+      verify(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      ).called(1);
+      verify(() => picker.pickFromGallery()).called(1);
+      expect(savedNewDish().imageUrl, newUrl);
     });
   });
 }

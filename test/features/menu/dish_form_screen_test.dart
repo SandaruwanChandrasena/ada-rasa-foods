@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:ada_rasa_foods/core/errors/data_failure.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
+import 'package:ada_rasa_foods/features/menu/domain/image_uploader.dart';
 import 'package:ada_rasa_foods/features/menu/domain/menu_repository.dart';
+import 'package:ada_rasa_foods/features/menu/domain/photo_picker.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/dish_form_cubit.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/dish_form_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +13,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockMenuRepository extends Mock implements MenuRepository {}
+
+class MockImageUploader extends Mock implements ImageUploader {}
+
+class MockPhotoPicker extends Mock implements PhotoPicker {}
 
 const kottu = Dish(
   id: 'd1',
@@ -21,8 +27,22 @@ const kottu = Dish(
   description: 'Spicy.',
 );
 
+const kottuWithPhoto = Dish(
+  id: 'd2',
+  restaurantId: 'r1',
+  name: 'Egg Kottu',
+  price: 900,
+  category: 'Kottu',
+  imageUrl: 'https://example.com/egg.jpg',
+);
+
+const pickedPath = '/cache/picked.jpg';
+const newUrl = 'https://res.cloudinary.com/dtmcqgolr/new.jpg';
+
 void main() {
   late MockMenuRepository repository;
+  late MockImageUploader uploader;
+  late MockPhotoPicker picker;
 
   setUpAll(() => registerFallbackValue(kottu));
 
@@ -31,6 +51,14 @@ void main() {
     when(() => repository.addDish(any())).thenAnswer((_) async => 'new1');
     when(() => repository.updateDish(any())).thenAnswer((_) async {});
     when(() => repository.deleteDish(any())).thenAnswer((_) async {});
+
+    uploader = MockImageUploader();
+    when(
+      () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+    ).thenAnswer((_) async => newUrl);
+
+    picker = MockPhotoPicker();
+    when(() => picker.pickFromGallery()).thenAnswer((_) async => pickedPath);
   });
 
   // A start page with an Open button, so we can see the form close.
@@ -49,6 +77,8 @@ void main() {
                   builder: (_) => BlocProvider(
                     create: (_) => DishFormCubit(
                       repository,
+                      uploader: uploader,
+                      picker: picker,
                       restaurantId: 'r1',
                       dish: dish,
                     ),
@@ -91,6 +121,24 @@ void main() {
     await tester.enterText(field('Price'), '1500');
     await tester.enterText(field('Category'), 'Kottu');
     await tester.pump();
+  }
+
+  Future<void> choosePhoto(WidgetTester tester) async {
+    await tester.tap(find.text('Choose photo'));
+    await tester.pumpAndSettle();
+  }
+
+  // An upload that waits. Call report() to send progress.
+  ({Completer<String> done, void Function(double) report}) slowUpload() {
+    final done = Completer<String>();
+    void Function(double)? onProgress;
+    when(
+      () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+    ).thenAnswer((call) {
+      onProgress = call.namedArguments[#onProgress] as void Function(double)?;
+      return done.future;
+    });
+    return (done: done, report: (value) => onProgress?.call(value));
   }
 
   testWidgets('the add page is empty and has no Delete', (tester) async {
@@ -222,5 +270,157 @@ void main() {
     verify(() => repository.deleteDish(kottu)).called(1);
     expect(find.byType(DishFormView), findsNothing);
     expect(find.text('Chicken Kottu is deleted.'), findsOneWidget);
+  });
+
+  group('photo', () {
+    testWidgets('a new dish shows Choose photo and no Remove photo',
+        (tester) async {
+      await openForm(tester);
+
+      expect(find.byType(DishPhotoBox), findsOneWidget);
+      expect(find.text('Choose photo'), findsOneWidget);
+      expect(find.text('Remove photo'), findsNothing);
+      expect(find.byKey(const Key('picked-photo')), findsNothing);
+    });
+
+    testWidgets('a dish with a photo shows Change and Remove photo',
+        (tester) async {
+      await openForm(tester, dish: kottuWithPhoto);
+
+      expect(find.text('Change photo'), findsOneWidget);
+      expect(find.text('Remove photo'), findsOneWidget);
+    });
+
+    testWidgets('Choose photo shows the preview and Remove photo',
+        (tester) async {
+      await openForm(tester);
+
+      await choosePhoto(tester);
+
+      expect(find.byKey(const Key('picked-photo')), findsOneWidget);
+      expect(find.text('Change photo'), findsOneWidget);
+      expect(find.text('Remove photo'), findsOneWidget);
+      verifyNever(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      );
+    });
+
+    testWidgets('tapping the photo box opens the gallery too',
+        (tester) async {
+      await openForm(tester);
+
+      await tester.tap(find.byKey(const Key('dish-photo-box')));
+      await tester.pumpAndSettle();
+
+      verify(() => picker.pickFromGallery()).called(1);
+      expect(find.byKey(const Key('picked-photo')), findsOneWidget);
+    });
+
+    testWidgets('Remove photo takes the photo away', (tester) async {
+      await openForm(tester, dish: kottuWithPhoto);
+
+      await tester.tap(find.text('Remove photo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove photo'), findsNothing);
+      expect(find.text('Choose photo'), findsOneWidget);
+    });
+
+    testWidgets('a gallery error shows the reason', (tester) async {
+      when(() => picker.pickFromGallery()).thenThrow(
+        const DataFailure('Could not open your photos.'),
+      );
+      await openForm(tester);
+
+      await choosePhoto(tester);
+
+      expect(find.text('Could not open your photos.'), findsOneWidget);
+      expect(find.byKey(const Key('picked-photo')), findsNothing);
+    });
+
+    testWidgets('uploading shows the progress and locks the form',
+        (tester) async {
+      final upload = slowUpload();
+      await openForm(tester);
+      await fillForm(tester);
+      await choosePhoto(tester);
+
+      await tester.tap(saveButton('Add dish'));
+      await tester.pump();
+      upload.report(0.45);
+      await tester.pump();
+
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.text('Uploading 45%'), findsOneWidget);
+      expect(tester.widget<TextField>(field('Dish name')).enabled, isFalse);
+      // OutlinedButton.icon is a subclass, so byType would miss it.
+      final photoButton = tester.widget<OutlinedButton>(
+        find.byWidgetPredicate((widget) => widget is OutlinedButton),
+      );
+      expect(photoButton.onPressed, isNull);
+
+      upload.done.complete(newUrl);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('Back is blocked while uploading', (tester) async {
+      final upload = slowUpload();
+      await openForm(tester);
+      await fillForm(tester);
+      await choosePhoto(tester);
+      await tester.tap(saveButton('Add dish'));
+      await tester.pump();
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DishFormView), findsOneWidget);
+      expect(find.text('Please wait, saving the dish.'), findsOneWidget);
+
+      upload.done.complete(newUrl);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DishFormView), findsNothing);
+    });
+
+    testWidgets('a failed upload keeps the page and the photo',
+        (tester) async {
+      when(
+        () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
+      ).thenThrow(
+        const DataFailure('The photo could not be uploaded. Please try again.'),
+      );
+      await openForm(tester);
+      await fillForm(tester);
+      await choosePhoto(tester);
+
+      await tester.tap(saveButton('Add dish'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DishFormView), findsOneWidget);
+      expect(find.byKey(const Key('picked-photo')), findsOneWidget);
+      expect(
+        find.text('The photo could not be uploaded. Please try again.'),
+        findsOneWidget,
+      );
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      verifyNever(() => repository.addDish(any()));
+    });
+
+    testWidgets('saving with a photo saves its link and closes',
+        (tester) async {
+      await openForm(tester);
+      await fillForm(tester);
+      await choosePhoto(tester);
+
+      await tester.tap(saveButton('Add dish'));
+      await tester.pumpAndSettle();
+
+      final saved =
+          verify(() => repository.addDish(captureAny())).captured.single
+              as Dish;
+      expect(saved.imageUrl, newUrl);
+      expect(find.byType(DishFormView), findsNothing);
+    });
   });
 }

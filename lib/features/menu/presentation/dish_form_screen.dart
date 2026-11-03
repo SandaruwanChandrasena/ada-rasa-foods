@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
+import '../../../core/widgets/food_image.dart';
 import '../domain/dish.dart';
 import 'dish_form_cubit.dart';
 import 'dish_form_state.dart';
@@ -35,6 +38,8 @@ class DishFormScreen extends StatelessWidget {
     return BlocProvider<DishFormCubit>(
       create: (_) => DishFormCubit(
         sl(),
+        uploader: sl(),
+        picker: sl(),
         restaurantId: args.restaurantId,
         dish: args.dish,
       ),
@@ -85,128 +90,176 @@ class _DishFormViewState extends State<DishFormView> {
         }
         if (state.status == DishFormStatus.saved ||
             state.status == DishFormStatus.deleted) {
-          Navigator.of(context).maybePop();
+          // PopScope still blocks in this frame, so we pop directly.
+          final navigator = Navigator.of(context);
+          if (navigator.canPop()) navigator.pop();
         }
       },
       builder: (context, state) {
         final errors = state.showErrors;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(state.isEditing ? 'Edit dish' : 'Add dish'),
-            actions: [
-              if (state.isEditing)
-                IconButton(
-                  tooltip: 'Delete dish',
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: state.isBusy ? null : () => _delete(context),
+        return PopScope(
+          // Leaving halfway would upload a photo that is never saved.
+          canPop: !state.isBusy,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _showWait(context);
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(state.isEditing ? 'Edit dish' : 'Add dish'),
+              actions: [
+                if (state.isEditing)
+                  IconButton(
+                    tooltip: 'Delete dish',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: state.isBusy ? null : () => _delete(context),
+                  ),
+              ],
+            ),
+            body: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              children: [
+                DishPhotoBox(
+                  state: state,
+                  onPick: cubit.pickPhoto,
+                  onRemove: cubit.removePhoto,
                 ),
-            ],
-          ),
-          body: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            children: [
-              TextField(
-                controller: _name,
-                enabled: !state.isBusy,
-                maxLength: DishFormState.maxName,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: 'Dish name',
-                  hintText: 'Chicken Kottu',
-                  errorText: errors ? state.nameError : null,
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _name,
+                  enabled: !state.isBusy,
+                  maxLength: DishFormState.maxName,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: 'Dish name',
+                    hintText: 'Chicken Kottu',
+                    errorText: errors ? state.nameError : null,
+                  ),
+                  onChanged: cubit.nameChanged,
                 ),
-                onChanged: cubit.nameChanged,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _description,
-                enabled: !state.isBusy,
-                maxLength: DishFormState.maxDescription,
-                maxLines: 3,
-                minLines: 1,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  labelText: 'Description (optional)',
-                  errorText: errors ? state.descriptionError : null,
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _description,
+                  enabled: !state.isBusy,
+                  maxLength: DishFormState.maxDescription,
+                  maxLines: 3,
+                  minLines: 1,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: 'Description (optional)',
+                    errorText: errors ? state.descriptionError : null,
+                  ),
+                  onChanged: cubit.descriptionChanged,
                 ),
-                onChanged: cubit.descriptionChanged,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _price,
-                enabled: !state.isBusy,
-                keyboardType: TextInputType.number,
-                // Whole rupees only, so no dots or letters.
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(6),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'Price',
-                  prefixText: 'Rs. ',
-                  errorText: errors ? state.priceError : null,
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _price,
+                  enabled: !state.isBusy,
+                  keyboardType: TextInputType.number,
+                  // Whole rupees only, so no dots or letters.
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Price',
+                    prefixText: 'Rs. ',
+                    errorText: errors ? state.priceError : null,
+                  ),
+                  onChanged: cubit.priceChanged,
                 ),
-                onChanged: cubit.priceChanged,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _category,
-                enabled: !state.isBusy,
-                maxLength: DishFormState.maxCategory,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  hintText: 'Kottu',
-                  errorText: errors ? state.categoryError : null,
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _category,
+                  enabled: !state.isBusy,
+                  maxLength: DishFormState.maxCategory,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    hintText: 'Kottu',
+                    errorText: errors ? state.categoryError : null,
+                  ),
+                  onChanged: cubit.categoryChanged,
                 ),
-                onChanged: cubit.categoryChanged,
-              ),
-              if (widget.categories.isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
+                if (widget.categories.isNotEmpty)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final category in widget.categories)
+                        ActionChip(
+                          label: Text(category),
+                          onPressed: state.isBusy
+                              ? null
+                              : () {
+                                  _category.text = category;
+                                  cubit.categoryChanged(category);
+                                },
+                        ),
+                    ],
+                  ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Available'),
+                  subtitle: const Text('Customers can order this dish.'),
+                  value: state.available,
+                  onChanged: state.isBusy ? null : cubit.availableChanged,
+                ),
+              ],
+            ),
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final category in widget.categories)
-                      ActionChip(
-                        label: Text(category),
-                        onPressed: state.isBusy
-                            ? null
-                            : () {
-                                _category.text = category;
-                                cubit.categoryChanged(category);
-                              },
-                      ),
+                    if (state.isUploading) ...[
+                      LinearProgressIndicator(value: state.uploadProgress),
+                      const SizedBox(height: 8),
+                    ],
+                    FilledButton(
+                      onPressed: state.isBusy ? null : cubit.save,
+                      child: _buttonChild(state),
+                    ),
                   ],
                 ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Available'),
-                subtitle: const Text('Customers can order this dish.'),
-                value: state.available,
-                onChanged: state.isBusy ? null : cubit.availableChanged,
-              ),
-            ],
-          ),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: FilledButton(
-                onPressed: state.isBusy ? null : cubit.save,
-                child: state.status == DishFormStatus.saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      )
-                    : Text(state.isEditing ? 'Save changes' : 'Add dish'),
               ),
             ),
           ),
         );
       },
     );
+  }
+
+  Widget _buttonChild(DishFormState state) {
+    if (state.isUploading) {
+      return Text('Uploading ${(state.uploadProgress * 100).round()}%');
+    }
+    if (state.status == DishFormStatus.saving) {
+      return const SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(strokeWidth: 2.5),
+      );
+    }
+    return Text(state.isEditing ? 'Save changes' : 'Add dish');
+  }
+
+  void _showWait(BuildContext context) {
+    final deleting =
+        context.read<DishFormCubit>().state.status == DishFormStatus.deleting;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            deleting
+                ? 'Please wait, deleting the dish.'
+                : 'Please wait, saving the dish.',
+          ),
+        ),
+      );
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -239,6 +292,84 @@ class _DishFormViewState extends State<DishFormView> {
       ),
     );
     if (yes ?? false) await cubit.delete();
+  }
+}
+
+// The photo, with Choose or Change photo and Remove photo.
+// Public, so tests can find it.
+class DishPhotoBox extends StatelessWidget {
+  const DishPhotoBox({
+    super.key,
+    required this.state,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  static const double height = 180;
+
+  final DishFormState state;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = state.isBusy;
+    final path = state.photoPath;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: const Key('dish-photo-box'),
+            onTap: busy ? null : onPick,
+            child: path == null
+                ? FoodImage(
+                    imageUrl: state.photoUrl,
+                    width: double.infinity,
+                    height: height,
+                    iconSize: 48,
+                  )
+                : Image.file(
+                    File(path),
+                    key: const Key('picked-photo'),
+                    width: double.infinity,
+                    height: height,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const FoodImage(
+                      imageUrl: '',
+                      width: double.infinity,
+                      height: height,
+                      iconSize: 48,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Wrap, not Row, so long button text never overflows.
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            OutlinedButton.icon(
+              onPressed: busy ? null : onPick,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(state.hasPhoto ? 'Change photo' : 'Choose photo'),
+            ),
+            if (state.hasPhoto)
+              TextButton.icon(
+                onPressed: busy ? null : onRemove,
+                icon: const Icon(Icons.hide_image_outlined),
+                label: const Text('Remove photo'),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 }
 

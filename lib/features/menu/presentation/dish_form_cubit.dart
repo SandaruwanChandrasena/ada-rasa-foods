@@ -2,13 +2,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/errors/data_failure.dart';
 import '../domain/dish.dart';
+import '../domain/image_uploader.dart';
 import '../domain/menu_repository.dart';
+import '../domain/photo_picker.dart';
 import 'dish_form_state.dart';
 
 // Add or edit one dish (RES-3). Give [dish] to edit it.
 class DishFormCubit extends Cubit<DishFormState> {
   DishFormCubit(
     this._repository, {
+    required this._uploader,
+    required this._picker,
     required this._restaurantId,
     Dish? dish,
   }) : super(
@@ -25,6 +29,8 @@ class DishFormCubit extends Cubit<DishFormState> {
         );
 
   final MenuRepository _repository;
+  final ImageUploader _uploader;
+  final PhotoPicker _picker;
   final String _restaurantId;
 
   void nameChanged(String value) => emit(state.copyWith(name: value));
@@ -38,6 +44,24 @@ class DishFormCubit extends Cubit<DishFormState> {
 
   void availableChanged(bool value) => emit(state.copyWith(available: value));
 
+  // Shows a preview only. The upload happens on Save.
+  Future<void> pickPhoto() async {
+    if (state.isBusy) return;
+    try {
+      final path = await _picker.pickFromGallery();
+      if (path == null || isClosed) return;
+      emit(state.copyWith(photoPath: path));
+    } catch (error) {
+      _failed(error);
+    }
+  }
+
+  // Clears the link only. Cloudinary files can't be deleted from the app.
+  void removePhoto() {
+    if (state.isBusy) return;
+    emit(state.copyWith(imageUrl: '', clearPhotoPath: true));
+  }
+
   Future<void> save() async {
     if (state.isBusy) return;
     if (!state.isValid) {
@@ -45,7 +69,22 @@ class DishFormCubit extends Cubit<DishFormState> {
       return;
     }
 
-    emit(state.copyWith(showErrors: true, status: DishFormStatus.saving));
+    // The new link stays in the state, so a failed save does not
+    // upload again.
+    String? url;
+    if (state.needsUpload) {
+      url = await _uploadPhoto();
+      if (url == null) return;
+    }
+
+    emit(
+      state.copyWith(
+        imageUrl: url,
+        clearPhotoPath: url != null,
+        showErrors: true,
+        status: DishFormStatus.saving,
+      ),
+    );
     final dish = state.toDish(_restaurantId);
 
     try {
@@ -66,6 +105,36 @@ class DishFormCubit extends Cubit<DishFormState> {
       );
     } catch (error) {
       _failed(error);
+    }
+  }
+
+  // The photo's link, or null when the upload fails.
+  Future<String?> _uploadPhoto() async {
+    final path = state.photoPath!;
+    emit(
+      state.copyWith(
+        showErrors: true,
+        status: DishFormStatus.uploading,
+        uploadProgress: 0,
+      ),
+    );
+
+    try {
+      final url = await _uploader.upload(
+        path,
+        onProgress: (progress) {
+          if (isClosed || !state.isUploading) return;
+          emit(
+            state.copyWith(
+              uploadProgress: progress.clamp(0.0, 1.0).toDouble(),
+            ),
+          );
+        },
+      );
+      return isClosed ? null : url;
+    } catch (error) {
+      _failed(error);
+      return null;
     }
   }
 
