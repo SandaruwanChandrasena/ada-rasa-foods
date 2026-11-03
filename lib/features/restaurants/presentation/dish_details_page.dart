@@ -11,6 +11,7 @@ import '../../cart/presentation/cart_cubit.dart';
 import '../../cart/presentation/cart_icon_button.dart';
 import '../../cart/presentation/cart_problem_banner.dart';
 import '../../menu/domain/dish.dart';
+import '../../menu/presentation/dish_photo_hero.dart';
 import '../domain/restaurant.dart';
 import 'restaurant_detail_cubit.dart';
 import 'restaurant_detail_state.dart';
@@ -165,12 +166,16 @@ class _LoadedView extends StatelessWidget {
             title: Text(dish.name),
             actions: const [CartIconButton()],
             flexibleSpace: FlexibleSpaceBar(
-              background: Opacity(
-                opacity: dish.available ? 1 : 0.4,
-                child: FoodImage(
-                  imageUrl: dish.imageUrl,
-                  borderRadius: 0,
-                  iconSize: 72,
+              // The card photo grows into this one.
+              background: DishPhotoHero(
+                dishId: dish.id,
+                child: Opacity(
+                  opacity: dish.available ? 1 : 0.4,
+                  child: FoodImage(
+                    imageUrl: dish.imageUrl,
+                    borderRadius: 0,
+                    iconSize: 72,
+                  ),
                 ),
               ),
             ),

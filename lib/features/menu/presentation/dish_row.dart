@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/price_format.dart';
 import '../../../core/widgets/food_image.dart';
 import '../domain/dish.dart';
+import 'dish_photo_hero.dart';
 
 // One dish on the restaurant page.
 class DishRow extends StatelessWidget {
@@ -27,10 +28,21 @@ class DishRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
+    final photo = FoodImage(
+      imageUrl: dish.imageUrl,
+      width: 84,
+      height: 84,
+      iconSize: 32,
+    );
+
     final content = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FoodImage(imageUrl: dish.imageUrl, width: 84, height: 84, iconSize: 32),
+        // Only tappable rows open the dish page, so only they fly.
+        if (onTap != null)
+          DishPhotoHero(dishId: dish.id, child: photo)
+        else
+          photo,
         const SizedBox(width: 14),
         Expanded(
           child: Column(

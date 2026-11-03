@@ -1,6 +1,7 @@
 import 'package:ada_rasa_foods/features/cart/presentation/cart_cubit.dart';
 import 'package:ada_rasa_foods/features/cart/presentation/cart_state.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
+import 'package:ada_rasa_foods/features/menu/presentation/dish_photo_hero.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/dish_row.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/dish_details_page.dart';
@@ -215,6 +216,13 @@ void main() {
       verify(() => detail.start('r1')).called(1);
     });
 
+    testWidgets('the big photo has the dish Hero tag', (tester) async {
+      await show(tester, loaded());
+
+      final hero = tester.widget<Hero>(find.byType(Hero));
+      expect(hero.tag, DishPhotoHero.tagFor('d1'));
+    });
+
     testWidgets('it updates live when the dish becomes not available',
         (tester) async {
       whenListen(
@@ -299,6 +307,19 @@ void main() {
       await showRow(tester, onTap: () {});
 
       expect(borderedCard(), findsOneWidget);
+    });
+
+    testWidgets('with a tap, the photo can fly (Hero)', (tester) async {
+      await showRow(tester, onTap: () {});
+
+      final hero = tester.widget<Hero>(find.byType(Hero));
+      expect(hero.tag, DishPhotoHero.tagFor('d1'));
+    });
+
+    testWidgets('without a tap, the photo does not fly', (tester) async {
+      await showRow(tester);
+
+      expect(find.byType(Hero), findsNothing);
     });
 
     testWidgets('without a tap, the row has no card (owner Menu tab)',
