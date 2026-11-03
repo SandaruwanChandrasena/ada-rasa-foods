@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../domain/dish.dart';
 
-enum DishFormStatus { editing, saving, deleting, saved, deleted }
+enum DishFormStatus { editing, uploading, saving, deleting, saved, deleted }
 
 // The Add dish and Edit dish page (RES-3).
 class DishFormState extends Equatable {
@@ -13,6 +13,9 @@ class DishFormState extends Equatable {
     this.price = '',
     this.category = '',
     this.available = true,
+    this.imageUrl,
+    this.photoPath,
+    this.uploadProgress = 0,
     this.showErrors = false,
     this.status = DishFormStatus.editing,
     this.notice,
@@ -37,6 +40,15 @@ class DishFormState extends Equatable {
   final String category;
   final bool available;
 
+  // The photo link to save. Null means keep the dish's saved photo.
+  final String? imageUrl;
+
+  // A photo picked from the gallery, not uploaded yet.
+  final String? photoPath;
+
+  // From 0 to 1 while the photo uploads.
+  final double uploadProgress;
+
   // Errors show only after the first Save tap.
   final bool showErrors;
 
@@ -48,8 +60,20 @@ class DishFormState extends Equatable {
 
   bool get isEditing => original != null;
 
+  bool get isUploading => status == DishFormStatus.uploading;
+
   bool get isBusy =>
-      status == DishFormStatus.saving || status == DishFormStatus.deleting;
+      status == DishFormStatus.uploading ||
+      status == DishFormStatus.saving ||
+      status == DishFormStatus.deleting;
+
+  // The online photo link. Empty means no online photo.
+  String get photoUrl => imageUrl ?? original?.imageUrl ?? '';
+
+  // A picked photo must go to Cloudinary before Save.
+  bool get needsUpload => photoPath != null;
+
+  bool get hasPhoto => needsUpload || photoUrl.isNotEmpty;
 
   int? get priceValue => int.tryParse(price.trim());
 
@@ -90,6 +114,7 @@ class DishFormState extends Equatable {
       descriptionError == null;
 
   // The dish to save, with spaces trimmed. Only call when isValid.
+  // Upload a picked photo first, so photoUrl holds its link.
   Dish toDish(String restaurantId) {
     return Dish(
       id: original?.id ?? '',
@@ -98,17 +123,22 @@ class DishFormState extends Equatable {
       description: description.trim(),
       price: priceValue ?? 0,
       category: category.trim(),
-      imageUrl: original?.imageUrl ?? '',
+      imageUrl: photoUrl,
       available: available,
     );
   }
 
+  // Use clearPhotoPath to forget a picked photo.
   DishFormState copyWith({
     String? name,
     String? description,
     String? price,
     String? category,
     bool? available,
+    String? imageUrl,
+    String? photoPath,
+    bool clearPhotoPath = false,
+    double? uploadProgress,
     bool? showErrors,
     DishFormStatus? status,
     String? notice,
@@ -121,6 +151,9 @@ class DishFormState extends Equatable {
       price: price ?? this.price,
       category: category ?? this.category,
       available: available ?? this.available,
+      imageUrl: imageUrl ?? this.imageUrl,
+      photoPath: clearPhotoPath ? null : photoPath ?? this.photoPath,
+      uploadProgress: uploadProgress ?? this.uploadProgress,
       showErrors: showErrors ?? this.showErrors,
       status: status ?? this.status,
       notice: notice ?? this.notice,
@@ -136,6 +169,9 @@ class DishFormState extends Equatable {
         price,
         category,
         available,
+        imageUrl,
+        photoPath,
+        uploadProgress,
         showErrors,
         status,
         notice,
