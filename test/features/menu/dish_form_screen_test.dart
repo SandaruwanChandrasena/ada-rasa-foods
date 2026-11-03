@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:ada_rasa_foods/core/errors/data_failure.dart';
+import 'package:ada_rasa_foods/core/widgets/photo_confirm_sheet.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
 import 'package:ada_rasa_foods/features/menu/domain/image_uploader.dart';
 import 'package:ada_rasa_foods/features/menu/domain/menu_repository.dart';
@@ -123,8 +124,11 @@ void main() {
     await tester.pump();
   }
 
+  // Choose photo, then Use photo in the sheet.
   Future<void> choosePhoto(WidgetTester tester) async {
     await tester.tap(find.text('Choose photo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use photo'));
     await tester.pumpAndSettle();
   }
 
@@ -291,6 +295,31 @@ void main() {
       expect(find.text('Remove photo'), findsOneWidget);
     });
 
+    testWidgets('Choose photo shows the sheet first', (tester) async {
+      await openForm(tester);
+
+      await tester.tap(find.text('Choose photo'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PhotoConfirmSheet), findsOneWidget);
+      expect(find.text('Use this photo?'), findsOneWidget);
+      expect(find.byKey(const Key('picked-photo')), findsNothing);
+    });
+
+    testWidgets('Cancel in the sheet adds no photo', (tester) async {
+      await openForm(tester);
+
+      await tester.tap(find.text('Choose photo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PhotoConfirmSheet), findsNothing);
+      expect(find.byKey(const Key('picked-photo')), findsNothing);
+      expect(find.text('Choose photo'), findsOneWidget);
+      expect(find.text('Remove photo'), findsNothing);
+    });
+
     testWidgets('Choose photo shows the preview and Remove photo',
         (tester) async {
       await openForm(tester);
@@ -310,6 +339,8 @@ void main() {
       await openForm(tester);
 
       await tester.tap(find.byKey(const Key('dish-photo-box')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use photo'));
       await tester.pumpAndSettle();
 
       verify(() => picker.pickFromGallery()).called(1);
@@ -332,8 +363,10 @@ void main() {
       );
       await openForm(tester);
 
-      await choosePhoto(tester);
+      await tester.tap(find.text('Choose photo'));
+      await tester.pumpAndSettle();
 
+      expect(find.byType(PhotoConfirmSheet), findsNothing);
       expect(find.text('Could not open your photos.'), findsOneWidget);
       expect(find.byKey(const Key('picked-photo')), findsNothing);
     });

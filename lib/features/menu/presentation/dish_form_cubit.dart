@@ -33,6 +33,9 @@ class DishFormCubit extends Cubit<DishFormState> {
   final PhotoPicker _picker;
   final String _restaurantId;
 
+  // True while the gallery or the "Use this photo?" sheet is open.
+  bool _picking = false;
+
   void nameChanged(String value) => emit(state.copyWith(name: value));
 
   void descriptionChanged(String value) =>
@@ -44,21 +47,46 @@ class DishFormCubit extends Cubit<DishFormState> {
 
   void availableChanged(bool value) => emit(state.copyWith(available: value));
 
-  // Shows a preview only. The upload happens on Save.
-  Future<void> pickPhoto() async {
-    if (state.isBusy) return;
+  // The photo goes into the box only after Use photo in the [confirm]
+  // sheet. It is a preview only; the upload happens on Save.
+  Future<void> pickPhoto({required ConfirmPhoto confirm}) async {
+    if (state.isBusy || _picking) return;
+
+    _picking = true;
     try {
-      final path = await _picker.pickFromGallery();
+      final path = await _pickConfirmed(confirm);
       if (path == null || isClosed) return;
       emit(state.copyWith(photoPath: path));
     } catch (error) {
       _failed(error);
+    } finally {
+      _picking = false;
+    }
+  }
+
+  // Opens the gallery again after Pick another.
+  // Null when the owner closes the gallery or taps Cancel.
+  Future<String?> _pickConfirmed(ConfirmPhoto confirm) async {
+    while (true) {
+      final path = await _picker.pickFromGallery();
+      if (path == null || isClosed) return null;
+
+      final choice = await confirm(path);
+      if (isClosed) return null;
+      switch (choice) {
+        case PhotoChoice.use:
+          return path;
+        case PhotoChoice.cancel:
+          return null;
+        case PhotoChoice.pickAnother:
+          continue;
+      }
     }
   }
 
   // Clears the link only. Cloudinary files can't be deleted from the app.
   void removePhoto() {
-    if (state.isBusy) return;
+    if (state.isBusy || _picking) return;
     emit(state.copyWith(imageUrl: '', clearPhotoPath: true));
   }
 

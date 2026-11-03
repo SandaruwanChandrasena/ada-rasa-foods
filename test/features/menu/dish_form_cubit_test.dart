@@ -19,6 +19,9 @@ class MockPhotoPicker extends Mock implements PhotoPicker {}
 const pickedPath = '/cache/picked.jpg';
 const newUrl = 'https://res.cloudinary.com/dtmcqgolr/new.jpg';
 
+// The owner taps Use photo in the sheet.
+Future<PhotoChoice> useIt(String path) async => PhotoChoice.use;
+
 const kottu = Dish(
   id: 'd1',
   restaurantId: 'r1',
@@ -289,7 +292,7 @@ void main() {
     test('picking a photo shows it, but does not upload', () async {
       final cubit = addForm();
 
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       expect(cubit.state.photoPath, pickedPath);
       expect(cubit.state.needsUpload, isTrue);
@@ -301,7 +304,7 @@ void main() {
       final cubit = editForm();
       final before = cubit.state;
 
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       expect(cubit.state, before);
     });
@@ -312,7 +315,7 @@ void main() {
       );
       final cubit = addForm();
 
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       expect(cubit.state.photoPath, isNull);
       expect(cubit.state.notice, 'Could not open your photos.');
@@ -321,7 +324,7 @@ void main() {
 
     test('remove photo clears the saved and the picked photo', () async {
       final cubit = editForm();
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       cubit.removePhoto();
 
@@ -339,11 +342,91 @@ void main() {
     });
   });
 
+  group('Use this photo sheet', () {
+    test('the sheet gets the picked photo', () async {
+      final shown = <String>[];
+      final cubit = addForm();
+
+      await cubit.pickPhoto(
+        confirm: (path) async {
+          shown.add(path);
+          return PhotoChoice.use;
+        },
+      );
+
+      expect(shown, [pickedPath]);
+      expect(cubit.state.photoPath, pickedPath);
+    });
+
+    test('Cancel keeps the old photo and changes nothing', () async {
+      final cubit = editForm();
+      final before = cubit.state;
+
+      await cubit.pickPhoto(confirm: (_) async => PhotoChoice.cancel);
+
+      expect(cubit.state, before);
+      expect(cubit.state.photoUrl, kottu.imageUrl);
+    });
+
+    test('Pick another opens the gallery again and uses the new photo',
+        () async {
+      final paths = ['/cache/first.jpg', '/cache/second.jpg'];
+      when(() => picker.pickFromGallery())
+          .thenAnswer((_) async => paths.removeAt(0));
+      final choices = [PhotoChoice.pickAnother, PhotoChoice.use];
+      final cubit = addForm();
+
+      await cubit.pickPhoto(confirm: (_) async => choices.removeAt(0));
+
+      verify(() => picker.pickFromGallery()).called(2);
+      expect(cubit.state.photoPath, '/cache/second.jpg');
+    });
+
+    test('Pick another, then closing the gallery, adds no photo',
+        () async {
+      final paths = <String?>[pickedPath, null];
+      when(() => picker.pickFromGallery())
+          .thenAnswer((_) async => paths.removeAt(0));
+      final cubit = addForm();
+
+      await cubit.pickPhoto(confirm: (_) async => PhotoChoice.pickAnother);
+
+      verify(() => picker.pickFromGallery()).called(2);
+      expect(cubit.state.photoPath, isNull);
+    });
+
+    test('taps while the sheet is open do nothing', () async {
+      final answer = Completer<PhotoChoice>();
+      final cubit = editForm();
+
+      final first = cubit.pickPhoto(confirm: (_) => answer.future);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.pickPhoto(confirm: useIt);
+      cubit.removePhoto();
+      answer.complete(PhotoChoice.use);
+      await first;
+
+      verify(() => picker.pickFromGallery()).called(1);
+      expect(cubit.state.photoPath, pickedPath);
+      expect(cubit.state.photoUrl, kottu.imageUrl);
+    });
+
+    test('after Cancel, a new pick works', () async {
+      final cubit = addForm();
+      await cubit.pickPhoto(confirm: (_) async => PhotoChoice.cancel);
+
+      await cubit.pickPhoto(confirm: useIt);
+
+      expect(cubit.state.photoPath, pickedPath);
+    });
+  });
+
   group('save with a photo', () {
     test('a new dish uploads the photo, then saves its link', () async {
       final cubit = addForm();
       fill(cubit);
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       await cubit.save();
 
@@ -361,7 +444,7 @@ void main() {
     test('it shows uploading with progress, then saving', () async {
       final cubit = addForm();
       fill(cubit);
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
       final states = <DishFormState>[];
       final sub = cubit.stream.listen(states.add);
 
@@ -383,7 +466,7 @@ void main() {
 
     test('an edit with a new photo saves the new link', () async {
       final cubit = editForm();
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       await cubit.save();
 
@@ -401,7 +484,7 @@ void main() {
 
     test('a form with errors does not upload', () async {
       final cubit = addForm();
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       await cubit.save();
 
@@ -418,7 +501,7 @@ void main() {
       );
       final cubit = addForm();
       fill(cubit);
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       await cubit.save();
 
@@ -437,7 +520,7 @@ void main() {
       ).thenThrow(const DataFailure('The photo could not be uploaded.'));
       final cubit = addForm();
       fill(cubit);
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
       await cubit.save();
 
       stubUpload();
@@ -454,7 +537,7 @@ void main() {
       );
       final cubit = addForm();
       fill(cubit);
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
       await cubit.save();
       expect(cubit.state.photoUrl, newUrl);
 
@@ -477,14 +560,14 @@ void main() {
       ).thenAnswer((_) => done.future);
       final cubit = addForm();
       fill(cubit);
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
 
       final first = cubit.save();
       expect(cubit.state.isUploading, isTrue);
       expect(cubit.state.isBusy, isTrue);
 
       await cubit.save();
-      await cubit.pickPhoto();
+      await cubit.pickPhoto(confirm: useIt);
       cubit.removePhoto();
       done.complete(newUrl);
       await first;

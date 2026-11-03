@@ -6,7 +6,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/food_image.dart';
+import '../../../core/widgets/photo_confirm_sheet.dart';
 import '../domain/dish.dart';
+import '../domain/photo_picker.dart';
 import 'dish_form_cubit.dart';
 import 'dish_form_state.dart';
 
@@ -121,7 +123,7 @@ class _DishFormViewState extends State<DishFormView> {
               children: [
                 DishPhotoBox(
                   state: state,
-                  onPick: cubit.pickPhoto,
+                  onPick: _pickPhoto,
                   onRemove: cubit.removePhoto,
                 ),
                 const SizedBox(height: 16),
@@ -228,6 +230,16 @@ class _DishFormViewState extends State<DishFormView> {
             ),
           ),
         );
+      },
+    );
+  }
+
+  // The owner sees the photo big and taps Use photo first.
+  Future<void> _pickPhoto() {
+    return context.read<DishFormCubit>().pickPhoto(
+      confirm: (path) async {
+        if (!mounted) return PhotoChoice.cancel;
+        return showPhotoConfirmSheet(context, path);
       },
     );
   }
