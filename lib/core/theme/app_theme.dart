@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../widgets/round_icon_button.dart';
 import 'app_sizes.dart';
 
 class AppTheme {
@@ -58,6 +59,11 @@ class AppTheme {
         ),
         iconTheme: barIcons,
         actionsIconTheme: barIcons,
+      ),
+      // Every back button in the app is a soft round button.
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (context) =>
+            const RoundIconCircle(icon: Icons.arrow_back_rounded),
       ),
       inputDecorationTheme: InputDecorationThemeData(
         border: fieldBorder(border),
