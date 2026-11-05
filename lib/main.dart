@@ -86,9 +86,12 @@ class AdaRasaApp extends StatelessWidget {
           theme: AppTheme.light(),
           scaffoldMessengerKey: _messengerKey,
           routerConfig: sl<GoRouter>(),
-          // The in-app "Reduce animations" switch works on every screen.
-          builder: (context, child) => ReduceAnimationsScope(
-            child: child ?? const SizedBox.shrink(),
+          // Icon sizes follow the phone width, and the in-app
+          // "Reduce animations" switch works on every screen.
+          builder: (context, child) => AppThemeByWidth(
+            child: ReduceAnimationsScope(
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),
