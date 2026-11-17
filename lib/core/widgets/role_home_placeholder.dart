@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../features/auth/presentation/auth_cubit.dart';
+import 'sign_out_button.dart';
 
 // Temporary home for each role, until the real home screens are built.
 class RoleHomePlaceholder extends StatelessWidget {
@@ -22,13 +23,7 @@ class RoleHomePlaceholder extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<AuthCubit>().signOut(),
-          ),
-        ],
+        actions: const [SignOutButton()],
       ),
       body: Center(
         child: Padding(

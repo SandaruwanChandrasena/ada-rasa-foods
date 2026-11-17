@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/fade_slide_in.dart';
+import '../../../core/widgets/sign_out_button.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../menu/presentation/menu_manage_cubit.dart';
 import '../../restaurants/presentation/my_restaurant_cubit.dart';
@@ -102,14 +103,7 @@ class RestaurantOrdersView extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             title: const _RestaurantName(),
-            actions: [
-              const _OpenSwitch(),
-              IconButton(
-                tooltip: 'Sign out',
-                icon: const Icon(Icons.logout),
-                onPressed: () => context.read<AuthCubit>().signOut(),
-              ),
-            ],
+            actions: const [_OpenSwitch(), SignOutButton()],
             bottom: const PreferredSize(
               preferredSize: Size.fromHeight(kTextTabBarHeight),
               child: _BoardTabs(),
@@ -339,13 +333,7 @@ class _NoRestaurantView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Orders'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<AuthCubit>().signOut(),
-          ),
-        ],
+        actions: const [SignOutButton()],
       ),
       body: const _MessageView(
         icon: Icons.storefront_outlined,

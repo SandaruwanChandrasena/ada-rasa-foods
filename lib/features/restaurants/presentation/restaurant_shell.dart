@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/sign_out_button.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../menu/domain/dish.dart';
 import '../../menu/presentation/dish_form_screen.dart';
@@ -76,13 +77,7 @@ class _MenuPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Menu'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<AuthCubit>().signOut(),
-          ),
-        ],
+        actions: const [SignOutButton()],
       ),
       body: Column(
         children: [
