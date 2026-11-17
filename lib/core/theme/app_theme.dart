@@ -83,6 +83,37 @@ class AppTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(color: border),
+      // Bottom bars: orange on a soft orange pill when selected, else grey.
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        height: 70,
+        indicatorColor: softOrange,
+        indicatorShape: const StadiumBorder(),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            size: iconSizes.body,
+            color: states.contains(WidgetState.selected)
+                ? brandOrange
+                : textMuted,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? const TextStyle(
+                  color: brandOrange,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                )
+              : const TextStyle(
+                  color: textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(52),

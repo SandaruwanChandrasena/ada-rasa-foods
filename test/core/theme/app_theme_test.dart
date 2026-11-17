@@ -122,6 +122,45 @@ void main() {
       expect(style.minimumSize?.resolve({}), const Size.fromHeight(52));
     });
 
+    test('bottom bars are white with a soft orange pill', () {
+      final bar = theme.navigationBarTheme;
+
+      expect(bar.backgroundColor, Colors.white);
+      expect(bar.elevation, 0);
+      expect(bar.indicatorColor, AppTheme.softOrange);
+      expect(bar.indicatorShape, const StadiumBorder());
+      expect(
+        bar.labelBehavior,
+        NavigationDestinationLabelBehavior.alwaysShow,
+      );
+    });
+
+    test('bottom bar icons: orange when selected, grey when not', () {
+      final icons = theme.navigationBarTheme.iconTheme!;
+      final selected = icons.resolve({WidgetState.selected})!;
+      final other = icons.resolve({})!;
+
+      expect(selected.color, AppTheme.brandOrange);
+      expect(selected.size, 25);
+      expect(other.color, AppTheme.textMuted);
+      expect(other.size, 25);
+    });
+
+    test('bottom bar icons follow the icon sizes it is given', () {
+      final large = AppTheme.light(iconSizes: AppIconSizes.large);
+      final icons = large.navigationBarTheme.iconTheme!;
+
+      expect(icons.resolve({})!.size, 26);
+    });
+
+    test('bottom bar labels: orange when selected, grey when not', () {
+      final labels = theme.navigationBarTheme.labelTextStyle!;
+
+      expect(labels.resolve({WidgetState.selected})!.color,
+          AppTheme.brandOrange);
+      expect(labels.resolve({})!.color, AppTheme.textMuted);
+    });
+
     test('OutlinedButton has a light border', () {
       final style = theme.outlinedButtonTheme.style!;
 
