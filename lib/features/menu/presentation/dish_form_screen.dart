@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../../core/widgets/photo_confirm_sheet.dart';
+import '../../../core/widgets/round_icon_button.dart';
 import '../domain/dish.dart';
 import '../domain/photo_picker.dart';
 import 'dish_form_cubit.dart';
@@ -111,9 +112,10 @@ class _DishFormViewState extends State<DishFormView> {
               title: Text(state.isEditing ? 'Edit dish' : 'Add dish'),
               actions: [
                 if (state.isEditing)
-                  IconButton(
+                  RoundIconButton(
                     tooltip: 'Delete dish',
-                    icon: const Icon(Icons.delete_outline),
+                    icon: Icons.delete_rounded,
+                    style: RoundIconStyle.danger,
                     onPressed: state.isBusy ? null : () => _delete(context),
                   ),
               ],

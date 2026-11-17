@@ -97,6 +97,31 @@ void main() {
     });
   });
 
+  group('RoundIconCircle danger', () {
+    testWidgets('danger style: red icon on soft red, no border', (
+      tester,
+    ) async {
+      setRedmi(tester);
+      await tester.pumpWidget(
+        app(
+          const Scaffold(
+            body: RoundIconCircle(
+              icon: Icons.delete_rounded,
+              style: RoundIconStyle.danger,
+            ),
+          ),
+        ),
+      );
+
+      final circle = circleOf(tester, find.byType(RoundIconCircle));
+      expect(circle.color, AppTheme.dangerBg);
+      expect(circle.border, isNull);
+
+      final icon = tester.widget<Icon>(find.byIcon(Icons.delete_rounded));
+      expect(icon.color, AppTheme.dangerRed);
+    });
+  });
+
   group('RoundIconButton', () {
     testWidgets('tapping it calls onPressed', (tester) async {
       setRedmi(tester);
@@ -135,6 +160,44 @@ void main() {
       await tester.pump();
 
       expect(find.byType(RoundIconButton), findsOneWidget);
+    });
+
+    testWidgets('a button with no onPressed looks faded', (tester) async {
+      setRedmi(tester);
+      await tester.pumpWidget(
+        app(
+          const Scaffold(
+            body: RoundIconButton(icon: Icons.person_rounded, onPressed: null),
+          ),
+        ),
+      );
+
+      final fade = find.descendant(
+        of: find.byType(RoundIconButton),
+        matching: find.byType(Opacity),
+      );
+      expect(fade, findsOneWidget);
+      expect(tester.widget<Opacity>(fade).opacity, 0.4);
+    });
+
+    testWidgets('a button that can be tapped is not faded', (tester) async {
+      setRedmi(tester);
+      await tester.pumpWidget(
+        app(
+          Scaffold(
+            body: RoundIconButton(
+              icon: Icons.person_rounded,
+              onPressed: () {},
+            ),
+          ),
+        ),
+      );
+
+      final fade = find.descendant(
+        of: find.byType(RoundIconButton),
+        matching: find.byType(Opacity),
+      );
+      expect(fade, findsNothing);
     });
 
     testWidgets('in the page body the circle is 25 + 12 on a Redmi', (

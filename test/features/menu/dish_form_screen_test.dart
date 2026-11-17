@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:ada_rasa_foods/core/errors/data_failure.dart';
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/core/widgets/photo_confirm_sheet.dart';
+import 'package:ada_rasa_foods/core/widgets/round_icon_button.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
 import 'package:ada_rasa_foods/features/menu/domain/image_uploader.dart';
 import 'package:ada_rasa_foods/features/menu/domain/menu_repository.dart';
@@ -274,6 +276,46 @@ void main() {
     verify(() => repository.deleteDish(kottu)).called(1);
     expect(find.byType(DishFormView), findsNothing);
     expect(find.text('Chicken Kottu is deleted.'), findsOneWidget);
+  });
+
+  testWidgets('Delete is a soft red round button', (tester) async {
+    await openForm(tester, dish: kottu);
+
+    final circle = find.descendant(
+      of: find.byTooltip('Delete dish'),
+      matching: find.byType(RoundIconCircle),
+    );
+    expect(circle, findsOneWidget);
+    expect(tester.widget<RoundIconCircle>(circle).style,
+        RoundIconStyle.danger);
+
+    final icon = tester.widget<Icon>(find.byIcon(Icons.delete_rounded));
+    expect(icon.color, AppTheme.dangerRed);
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
+  });
+
+  testWidgets('Delete is faded and does nothing while saving',
+      (tester) async {
+    final done = Completer<void>();
+    when(() => repository.updateDish(any())).thenAnswer((_) => done.future);
+    await openForm(tester, dish: kottu);
+
+    await tester.tap(saveButton('Save changes'));
+    await tester.pump();
+
+    final fade = find.descendant(
+      of: find.byTooltip('Delete dish'),
+      matching: find.byType(Opacity),
+    );
+    expect(fade, findsOneWidget);
+
+    await tester.tap(find.byTooltip('Delete dish'));
+    await tester.pump();
+    expect(find.text('Delete Chicken Kottu?'), findsNothing);
+    verifyNever(() => repository.deleteDish(any()));
+
+    done.complete();
+    await tester.pumpAndSettle();
   });
 
   group('photo', () {

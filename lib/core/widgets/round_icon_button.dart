@@ -4,7 +4,8 @@ import '../theme/app_theme.dart';
 
 // soft: orange icon on soft orange, for white pages.
 // onPhoto: dark icon on white, so it shows on any photo.
-enum RoundIconStyle { soft, onPhoto }
+// danger: red icon on soft red, for actions that cannot be undone.
+enum RoundIconStyle { soft, onPhoto, danger }
 
 // A round background with an icon in the middle, and no border.
 class RoundIconCircle extends StatelessWidget {
@@ -24,21 +25,18 @@ class RoundIconCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     // Icon buttons and the top bar set the size for each phone width.
     final iconSize = IconTheme.of(context).size ?? 24;
-    final isSoft = style == RoundIconStyle.soft;
+    final (background, iconColor) = switch (style) {
+      RoundIconStyle.soft => (AppTheme.softOrange, AppTheme.brandOrange),
+      RoundIconStyle.onPhoto => (Colors.white, AppTheme.textDark),
+      RoundIconStyle.danger => (AppTheme.dangerBg, AppTheme.dangerRed),
+    };
 
     return Container(
       width: iconSize + padding,
       height: iconSize + padding,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isSoft ? AppTheme.softOrange : Colors.white,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        size: iconSize,
-        color: isSoft ? AppTheme.brandOrange : AppTheme.textDark,
-      ),
+      decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+      child: Icon(icon, size: iconSize, color: iconColor),
     );
   }
 }
@@ -60,10 +58,13 @@ class RoundIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final circle = RoundIconCircle(icon: icon, style: style);
+
     return IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
-      icon: RoundIconCircle(icon: icon, style: style),
+      // A button that cannot be tapped now looks faded.
+      icon: onPressed == null ? Opacity(opacity: 0.4, child: circle) : circle,
     );
   }
 }
