@@ -26,8 +26,10 @@ import '../../features/restaurants/presentation/customer_home_screen.dart';
 import '../../features/restaurants/presentation/dish_details_page.dart';
 import '../../features/restaurants/presentation/restaurant_page.dart';
 import '../di/injection.dart';
+import '../widgets/customer_bottom_bar.dart';
 import '../widgets/role_home_placeholder.dart';
 import 'customer_shell.dart';
+import 'tab_scroll.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -139,7 +141,10 @@ GoRouter createRouter(AuthCubit authCubit) {
             routes: [
               GoRoute(
                 path: AppRoutes.customer,
-                builder: (context, state) => const CustomerHomeScreen(),
+                builder: (context, state) => const TabScroll(
+                  tab: CustomerBottomBar.home,
+                  child: CustomerHomeScreen(),
+                ),
                 // Inside Home, so Home stays under them and back works,
                 // even when they are opened with go().
                 routes: [
@@ -195,7 +200,10 @@ GoRouter createRouter(AuthCubit authCubit) {
             routes: [
               GoRoute(
                 path: AppRoutes.myOrders,
-                builder: (context, state) => const MyOrdersScreen(),
+                builder: (context, state) => const TabScroll(
+                  tab: CustomerBottomBar.orders,
+                  child: MyOrdersScreen(),
+                ),
               ),
             ],
           ),
@@ -203,7 +211,10 @@ GoRouter createRouter(AuthCubit authCubit) {
             routes: [
               GoRoute(
                 path: AppRoutes.profile,
-                builder: (context, state) => const ProfileScreen(),
+                builder: (context, state) => const TabScroll(
+                  tab: CustomerBottomBar.profile,
+                  child: ProfileScreen(),
+                ),
                 routes: [
                   GoRoute(
                     path: 'settings',

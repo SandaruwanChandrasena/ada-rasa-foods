@@ -1,4 +1,5 @@
 import 'package:ada_rasa_foods/core/router/customer_shell.dart';
+import 'package:ada_rasa_foods/core/router/tab_scroll.dart';
 import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/core/widgets/customer_bottom_bar.dart';
 import 'package:ada_rasa_foods/features/orders/domain/food_order.dart';
@@ -104,6 +105,72 @@ void main() {
       await tester.pump();
 
       expect(taps, [CustomerBottomBar.orders]);
+    });
+
+    testWidgets('tapping the open tab does not tell the router', (
+      tester,
+    ) async {
+      await show(tester);
+
+      await tester.tap(find.text('Home'));
+      await tester.pump();
+
+      expect(taps, isEmpty);
+    });
+
+    testWidgets('tapping the open tab sends the scroll to top signal', (
+      tester,
+    ) async {
+      await show(tester, currentIndex: CustomerBottomBar.orders);
+
+      await tester.tap(find.text('Orders'));
+      await tester.pump();
+
+      final signal = TabReselectScope.maybeOf(
+        tester.element(find.text('Tab page')),
+      );
+      expect(signal?.tab, CustomerBottomBar.orders);
+    });
+
+    testWidgets('tapping Home again scrolls the Home list to the top', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.75;
+      addTearDown(tester.view.reset);
+      when(() => orders.state).thenReturn(const MyOrdersState());
+
+      await tester.pumpWidget(
+        BlocProvider<MyOrdersCubit>.value(
+          value: orders,
+          child: MaterialApp(
+            home: CustomerShell(
+              currentIndex: CustomerBottomBar.home,
+              onTabSelected: taps.add,
+              child: TabScroll(
+                tab: CustomerBottomBar.home,
+                child: ListView(
+                  children: [
+                    for (var i = 0; i < 60; i++)
+                      SizedBox(height: 80, child: Text('Restaurant $i')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final list = tester.state<ScrollableState>(find.byType(Scrollable));
+      list.position.jumpTo(2000);
+      await tester.pump();
+      expect(find.text('Restaurant 0'), findsNothing);
+
+      await tester.tap(find.text('Home'));
+      await tester.pumpAndSettle();
+
+      expect(list.position.pixels, 0);
+      expect(find.text('Restaurant 0'), findsOneWidget);
+      expect(taps, isEmpty);
     });
 
     testWidgets('no dot while the orders are loading', (tester) async {
