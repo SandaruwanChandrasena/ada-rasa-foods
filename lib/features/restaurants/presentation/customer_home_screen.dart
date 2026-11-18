@@ -86,20 +86,8 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'My orders',
-            icon: const Icon(Icons.receipt_long_outlined),
-            onPressed: () => context.push(AppRoutes.myOrders),
-          ),
-          const CartIconButton(),
-          // Sign out is inside Profile now.
-          IconButton(
-            tooltip: 'Profile',
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () => context.push(AppRoutes.profile),
-          ),
-        ],
+        // My orders and Profile are in the bottom bar.
+        actions: const [CartIconButton()],
       ),
       body: BlocBuilder<RestaurantListCubit, RestaurantListState>(
         builder: (context, state) {

@@ -55,7 +55,8 @@ class ActiveOrderBanner extends StatelessWidget {
           text: '${active.length} orders in progress. Tap to see them.',
           color: AppTheme.brandOrange,
           background: const Color(0xFFFFF1EA),
-          onTap: () => context.push(AppRoutes.myOrders),
+          // My orders is a tab, so switch to it.
+          onTap: () => context.go(AppRoutes.myOrders),
         );
       },
     );

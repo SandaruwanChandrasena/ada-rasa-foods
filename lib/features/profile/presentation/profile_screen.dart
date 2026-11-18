@@ -71,7 +71,8 @@ class ProfileView extends StatelessWidget {
                       _Row(
                         icon: Icons.receipt_long_outlined,
                         title: 'My orders',
-                        onTap: () => context.push(AppRoutes.myOrders),
+                        // My orders is a tab, so switch to it.
+                        onTap: () => context.go(AppRoutes.myOrders),
                       ),
                       _Row(
                         icon: Icons.credit_card_outlined,
