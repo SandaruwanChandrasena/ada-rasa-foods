@@ -8,19 +8,7 @@ import 'package:mocktail/mocktail.dart';
 
 class MockAuthCubit extends MockCubit<AuthState> implements AuthCubit {}
 
-// Every GoRoute path inside these routes, with nested routes too.
-List<String> pathsIn(List<RouteBase> routes) {
-  return [
-    for (final route in routes) ...[
-      if (route is GoRoute) route.path,
-      // A shell lists its tab routes again in route.routes, so skip them.
-      if (route is StatefulShellRoute)
-        for (final branch in route.branches) ...pathsIn(branch.routes)
-      else
-        ...pathsIn(route.routes),
-    ],
-  ];
-}
+String pathOf(RouteMatchBase match) => (match.route as GoRoute).path;
 
 void main() {
   late GoRouter router;
@@ -33,95 +21,131 @@ void main() {
 
   tearDown(() => router.dispose());
 
-  List<RouteBase> topRoutes() => router.configuration.routes;
-
   StatefulShellRoute customerShell() {
-    return topRoutes().whereType<StatefulShellRoute>().single;
+    return router.configuration.routes.whereType<StatefulShellRoute>().single;
+  }
+
+  List<GoRoute> tabRoutes() => [
+        for (final branch in customerShell().branches)
+          branch.routes.single as GoRoute,
+      ];
+
+  // The pages Flutter would show for this link, from bottom to top.
+  List<RouteMatchBase> pagesFor(String location) {
+    return router.configuration.findMatch(Uri.parse(location)).matches;
   }
 
   group('customer tabs', () {
-    test('there is one shell with 3 tabs', () {
-      expect(customerShell().branches, hasLength(3));
-    });
-
     test('the tabs are Home, Orders and Profile, in that order', () {
-      final tabPaths = [
-        for (final branch in customerShell().branches)
-          (branch.routes.single as GoRoute).path,
-      ];
-
-      expect(tabPaths, [
+      expect(tabRoutes().map((route) => route.path), [
         AppRoutes.customer,
         AppRoutes.myOrders,
         AppRoutes.profile,
       ]);
     });
 
-    test('the tabs have no pages inside them', () {
-      // Pages inside a tab would show the bottom bar.
-      expect(pathsIn([customerShell()]), [
-        AppRoutes.customer,
-        AppRoutes.myOrders,
-        AppRoutes.profile,
-      ]);
+    test('the tabs themselves stay inside the shell', () {
+      for (final tab in tabRoutes()) {
+        expect(tab.parentNavigatorKey, isNull);
+      }
+    });
+
+    test('every page inside a tab opens on top, with no bar', () {
+      final rootKey = router.configuration.navigatorKey;
+
+      void check(List<RouteBase> routes) {
+        for (final route in routes.cast<GoRoute>()) {
+          expect(route.parentNavigatorKey, rootKey, reason: route.path);
+          check(route.routes);
+        }
+      }
+
+      for (final tab in tabRoutes()) {
+        check(tab.routes);
+      }
+    });
+
+    test('the Orders tab opens with nothing on top', () {
+      final pages = pagesFor(AppRoutes.myOrders);
+
+      expect(pages, hasLength(1));
+      final shell = pages.single as ShellRouteMatch;
+      expect(pathOf(shell.matches.single), AppRoutes.myOrders);
     });
   });
 
-  group('pages with no bottom bar', () {
-    test('open on top of the tabs, outside the shell', () {
-      final topPaths = [
-        for (final route in topRoutes())
-          if (route is GoRoute) route.path,
-      ];
+  // The bug: after placing an order there was no back button,
+  // because nothing was under the order page.
+  group('Home stays under pages opened with go()', () {
+    test('order status has the Home tab under it', () {
+      final pages = pagesFor(AppRoutes.orderStatus('o1'));
 
-      expect(
-        topPaths,
-        containsAll([
-          '${AppRoutes.customer}/restaurant/:id',
-          AppRoutes.cart,
-          AppRoutes.checkout,
-          '${AppRoutes.customer}/order/:id',
-          AppRoutes.myCards,
-          AppRoutes.addCard,
-          AppRoutes.settings,
-          AppRoutes.editProfile,
-        ]),
-      );
+      expect(pages, hasLength(2));
+      final shell = pages.first as ShellRouteMatch;
+      expect(pathOf(shell.matches.single), AppRoutes.customer);
+      expect(pathOf(pages.last), 'order/:id');
     });
 
-    test('dish details is still under its restaurant page', () {
-      final restaurantPage = topRoutes().whereType<GoRoute>().singleWhere(
-            (route) => route.path == '${AppRoutes.customer}/restaurant/:id',
-          );
-      final dish = restaurantPage.routes.single as GoRoute;
+    test('the cart has the Home tab under it', () {
+      final pages = pagesFor(AppRoutes.cart);
 
-      expect(dish.path, 'dish/:dishId');
+      expect(pages, hasLength(2));
+      expect(pages.first, isA<ShellRouteMatch>());
+      expect(pathOf(pages.last), 'cart');
     });
 
-    test('the page links still match the routes', () {
+    test('dish details has Home and its restaurant under it', () {
+      final pages = pagesFor(AppRoutes.dishDetails('r1', 'd1'));
+
+      expect(pages, hasLength(3));
+      expect(pages.first, isA<ShellRouteMatch>());
+      expect(pathOf(pages[1]), 'restaurant/:id');
+      expect(pathOf(pages.last), 'dish/:dishId');
+    });
+
+    test('checkout, My cards and Add card have Home under them', () {
+      for (final location in [
+        AppRoutes.checkout,
+        AppRoutes.myCards,
+        AppRoutes.addCard,
+      ]) {
+        final pages = pagesFor(location);
+
+        expect(pages.first, isA<ShellRouteMatch>(), reason: location);
+        expect(pages, hasLength(2), reason: location);
+      }
+    });
+
+    test('Settings and Edit profile have the Profile tab under them', () {
+      for (final location in [AppRoutes.settings, AppRoutes.addPhone]) {
+        final pages = pagesFor(location);
+        final shell = pages.first as ShellRouteMatch;
+
+        expect(pathOf(shell.matches.single), AppRoutes.profile);
+        expect(pages, hasLength(2), reason: location);
+      }
+    });
+  });
+
+  group('links and other roles', () {
+    test('the page links did not change', () {
       expect(AppRoutes.restaurantPage('r1'), '/customer/restaurant/r1');
-      expect(
-        AppRoutes.dishDetails('r1', 'd1'),
-        '/customer/restaurant/r1/dish/d1',
-      );
       expect(AppRoutes.orderStatus('o1'), '/customer/order/o1');
-      expect(AppRoutes.myOrders, '/customer/orders');
-      expect(AppRoutes.profile, '/customer/profile');
+      expect(AppRoutes.cart, '/customer/cart');
+      expect(AppRoutes.settings, '/customer/profile/settings');
     });
-  });
 
-  group('other roles', () {
     test('owner, admin and rider homes are not inside the shell', () {
-      final topPaths = [
-        for (final route in topRoutes())
-          if (route is GoRoute) route.path,
-      ];
+      for (final location in [
+        AppRoutes.restaurant,
+        AppRoutes.admin,
+        AppRoutes.rider,
+      ]) {
+        final pages = pagesFor(location);
 
-      expect(
-        topPaths,
-        containsAll([AppRoutes.restaurant, AppRoutes.admin, AppRoutes.rider]),
-      );
-      expect(pathsIn([customerShell()]), isNot(contains(AppRoutes.restaurant)));
+        expect(pages, hasLength(1), reason: location);
+        expect(pages.single, isNot(isA<ShellRouteMatch>()), reason: location);
+      }
     });
   });
 }

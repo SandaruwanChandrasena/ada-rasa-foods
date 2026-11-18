@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../features/auth/domain/user_role.dart';
 import '../../features/auth/presentation/auth_cubit.dart';
@@ -88,7 +88,11 @@ class AppRoutes {
 }
 
 GoRouter createRouter(AuthCubit authCubit) {
+  // Pages with this key open on top of the tabs, so the bar is hidden.
+  final rootKey = GlobalKey<NavigatorState>();
+
   return GoRouter(
+    navigatorKey: rootKey,
     initialLocation: AppRoutes.splash,
     // Runs the redirect again on sign in, sign out, or a role change.
     refreshListenable: AuthRouteRefresh(authCubit.stream),
@@ -136,6 +140,54 @@ GoRouter createRouter(AuthCubit authCubit) {
               GoRoute(
                 path: AppRoutes.customer,
                 builder: (context, state) => const CustomerHomeScreen(),
+                // Inside Home, so Home stays under them and back works,
+                // even when they are opened with go().
+                routes: [
+                  GoRoute(
+                    path: 'restaurant/:id',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => RestaurantPage(
+                      restaurantId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'dish/:dishId',
+                        parentNavigatorKey: rootKey,
+                        builder: (context, state) => DishDetailsPage(
+                          restaurantId: state.pathParameters['id']!,
+                          dishId: state.pathParameters['dishId']!,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'cart',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => const CartScreen(),
+                  ),
+                  GoRoute(
+                    path: 'checkout',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => const CheckoutScreen(),
+                  ),
+                  GoRoute(
+                    path: 'order/:id',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => OrderStatusScreen(
+                      orderId: state.pathParameters['id']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'cards',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => const MyCardsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'cards/add',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => const AddCardScreen(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -152,56 +204,25 @@ GoRouter createRouter(AuthCubit authCubit) {
               GoRoute(
                 path: AppRoutes.profile,
                 builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'settings',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => const SettingsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'edit',
+                    parentNavigatorKey: rootKey,
+                    builder: (context, state) => EditProfileScreen(
+                      forCheckout:
+                          state.uri.queryParameters['from'] == 'checkout',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ],
-      ),
-      // The other customer pages open on top, with no bottom bar.
-      GoRoute(
-        path: '${AppRoutes.customer}/restaurant/:id',
-        builder: (context, state) =>
-            RestaurantPage(restaurantId: state.pathParameters['id']!),
-        routes: [
-          GoRoute(
-            path: 'dish/:dishId',
-            builder: (context, state) => DishDetailsPage(
-              restaurantId: state.pathParameters['id']!,
-              dishId: state.pathParameters['dishId']!,
-            ),
-          ),
-        ],
-      ),
-      GoRoute(
-        path: AppRoutes.cart,
-        builder: (context, state) => const CartScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.checkout,
-        builder: (context, state) => const CheckoutScreen(),
-      ),
-      GoRoute(
-        path: '${AppRoutes.customer}/order/:id',
-        builder: (context, state) =>
-            OrderStatusScreen(orderId: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: AppRoutes.myCards,
-        builder: (context, state) => const MyCardsScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.addCard,
-        builder: (context, state) => const AddCardScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.settings,
-        builder: (context, state) => const SettingsScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.editProfile,
-        builder: (context, state) => EditProfileScreen(
-          forCheckout: state.uri.queryParameters['from'] == 'checkout',
-        ),
       ),
       GoRoute(
         path: AppRoutes.restaurant,
