@@ -16,12 +16,16 @@ class HomeRestaurantList extends StatefulWidget {
     required this.onCuisineSelected,
     required this.onRetry,
     required this.onOpen,
+    this.header,
   });
 
   final RestaurantListState state;
   final ValueChanged<String?> onCuisineSelected;
   final VoidCallback onRetry;
   final ValueChanged<Restaurant> onOpen;
+
+  // Shown above the first card, and scrolls away with the list.
+  final Widget? header;
 
   // Only the first cards animate. The rest show at once.
   static const animatedCards = 6;
@@ -116,12 +120,18 @@ class _HomeRestaurantListState extends State<HomeRestaurantList> {
                 : 'No restaurants match your search.',
           );
         }
+        final header = widget.header;
+        final first = header == null ? 0 : 1;
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          itemCount: restaurants.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 14),
-          itemBuilder: (context, index) =>
-              _card(restaurants[index], index),
+          itemCount: restaurants.length + first,
+          // The header adds its own gap, so it can hide with no gap left.
+          separatorBuilder: (context, index) => index < first
+              ? const SizedBox.shrink()
+              : const SizedBox(height: 14),
+          itemBuilder: (context, index) => index < first
+              ? header!
+              : _card(restaurants[index - first], index - first),
         );
     }
   }

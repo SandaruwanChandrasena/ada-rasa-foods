@@ -12,6 +12,7 @@ import '../../cart/presentation/cart_problem_banner.dart';
 import '../../orders/presentation/active_order_banner.dart';
 import '../../orders/presentation/my_orders_cubit.dart';
 import '../../orders/presentation/my_orders_state.dart';
+import 'home_header.dart';
 import 'home_restaurant_list.dart';
 import 'restaurant_list_cubit.dart';
 import 'restaurant_list_state.dart';
@@ -76,16 +77,8 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: Row(
-          children: [
-            Image.asset('assets/images/logo.png', height: 36),
-            const SizedBox(width: 10),
-            const Text(
-              'Ada Rasa',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+        centerTitle: false,
+        title: const HomeGreeting(),
         // My orders and Profile are in the bottom bar.
         actions: const [CartIconButton()],
       ),
@@ -120,6 +113,7 @@ class _CustomerHomeViewState extends State<_CustomerHomeView> {
               Expanded(
                 child: HomeRestaurantList(
                   state: state,
+                  header: const WelcomeBanner(),
                   onCuisineSelected: cubit.selectCuisine,
                   onRetry: cubit.start,
                   onOpen: (restaurant) =>

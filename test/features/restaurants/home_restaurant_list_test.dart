@@ -55,6 +55,7 @@ void main() {
   Future<void> showList(
     WidgetTester tester, {
     bool animationsOff = false,
+    Widget? header,
   }) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3;
@@ -75,6 +76,7 @@ void main() {
                       list.value.copyWith(selectedCuisine: () => cuisine),
                   onRetry: () => retries++,
                   onOpen: (restaurant) => opened.add(restaurant.id),
+                  header: header,
                 ),
               ),
             ),
@@ -263,5 +265,79 @@ void main() {
 
     expect(find.text('No restaurants yet.'), findsOneWidget);
     expect(find.byType(ChoiceChip), findsNothing);
+  });
+
+  group('header', () {
+    const banner = SizedBox(height: 80, child: Text('Welcome'));
+
+    Future<void> showWithHeader(WidgetTester tester, Widget header) async {
+      await showList(tester, header: header);
+      list.value = loadedWith(8);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows above the first card', (tester) async {
+      await showWithHeader(tester, banner);
+
+      final headerTop = tester.getTopLeft(find.text('Welcome')).dy;
+      final cardTop = tester.getTopLeft(find.text('Place 0')).dy;
+      expect(headerTop, lessThan(cardTop));
+    });
+
+    testWidgets('is not shown while loading or after an error', (
+      tester,
+    ) async {
+      await showList(tester, header: banner);
+      expect(find.text('Welcome'), findsNothing);
+
+      list.value = const RestaurantListState(
+        status: RestaurantListStatus.failure,
+        errorMessage: 'No internet connection.',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Welcome'), findsNothing);
+    });
+
+    testWidgets('scrolls away with the list', (tester) async {
+      await showWithHeader(tester, banner);
+
+      await tester.drag(find.text('Place 1'), const Offset(0, -900));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome'), findsNothing);
+    });
+
+    testWidgets('a hidden header leaves no gap above the first card', (
+      tester,
+    ) async {
+      await showLoaded(tester, 4);
+      final plainTop = tester.getTopLeft(find.text('Place 0')).dy;
+
+      await showWithHeader(tester, const SizedBox.shrink());
+      final hiddenTop = tester.getTopLeft(find.text('Place 0')).dy;
+
+      expect(hiddenTop, plainTop);
+    });
+
+    testWidgets('the first card still fades in first', (tester) async {
+      await showList(tester, header: banner);
+      list.value = loadedWith(8);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(opacityOf(tester, 'Place 0'), greaterThan(0));
+      expect(opacityOf(tester, 'Place 2'), 0);
+    });
+
+    testWidgets('tapping a card under the header opens the right one', (
+      tester,
+    ) async {
+      await showWithHeader(tester, banner);
+
+      await tester.tap(find.text('Place 0'));
+      await tester.pump();
+
+      expect(opened, ['r0']);
+    });
   });
 }
