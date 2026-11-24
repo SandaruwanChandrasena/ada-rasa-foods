@@ -43,7 +43,11 @@ void main() {
 
   setUp(() => cart = MockCartCubit());
 
-  Future<void> show(WidgetTester tester, CartState state) async {
+  Future<void> show(
+    WidgetTester tester,
+    CartState state, {
+    RoundIconStyle style = RoundIconStyle.soft,
+  }) async {
     // Redmi size: about 393 points wide.
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.75;
@@ -57,7 +61,7 @@ void main() {
           builder: (context, state) => Scaffold(
             appBar: AppBar(
               title: const Text('Home'),
-              actions: const [CartIconButton()],
+              actions: [CartIconButton(style: style)],
             ),
           ),
         ),
@@ -96,6 +100,29 @@ void main() {
       final circle = find.byType(RoundIconCircle);
       expect(circle, findsOneWidget);
       expect(tester.getSize(circle), const Size(38, 38));
+    });
+
+    testWidgets('is soft orange by default', (tester) async {
+      await show(tester, const CartState(userId: 'u1'));
+
+      final circle = tester.widget<RoundIconCircle>(
+        find.byType(RoundIconCircle),
+      );
+      expect(circle.style, RoundIconStyle.soft);
+    });
+
+    testWidgets('on a photo it is a white circle', (tester) async {
+      await show(
+        tester,
+        cartWith([chickenKottu]),
+        style: RoundIconStyle.onPhoto,
+      );
+
+      final circle = tester.widget<RoundIconCircle>(
+        find.byType(RoundIconCircle),
+      );
+      expect(circle.style, RoundIconStyle.onPhoto);
+      expect(find.text('2'), findsOneWidget);
     });
 
     testWidgets('an empty cart shows no badge', (tester) async {

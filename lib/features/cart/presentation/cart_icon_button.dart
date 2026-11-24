@@ -12,7 +12,10 @@ import 'fly_to_cart.dart';
 // Round cart button for the top bar, with the number of items on a badge.
 // The food photo flies here, then the icon bounces (CUS-7).
 class CartIconButton extends StatefulWidget {
-  const CartIconButton({super.key});
+  const CartIconButton({super.key, this.style = RoundIconStyle.soft});
+
+  // White on photos, soft orange on white pages.
+  final RoundIconStyle style;
 
   @override
   State<CartIconButton> createState() => _CartIconButtonState();
@@ -99,8 +102,9 @@ class _CartIconButtonState extends State<CartIconButton>
                       style: TextStyle(fontWeight: FontWeight.w900),
                     )
                   : Text(count > 99 ? '99+' : '$count'),
-              child: const RoundIconCircle(
+              child: RoundIconCircle(
                 icon: Icons.shopping_cart_rounded,
+                style: widget.style,
               ),
             ),
           ),

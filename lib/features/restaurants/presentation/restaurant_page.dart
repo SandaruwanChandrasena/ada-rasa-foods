@@ -4,7 +4,10 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/food_image.dart';
+import '../../../core/widgets/open_status_chip.dart';
+import '../../../core/widgets/photo_header.dart';
 import '../../cart/presentation/add_to_cart_button.dart';
 import '../../cart/presentation/cart_bar.dart';
 import '../../cart/presentation/cart_icon_button.dart';
@@ -90,18 +93,14 @@ class _LoadedView extends StatelessWidget {
       bottomNavigationBar: const CartBar(),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 220,
-            title: Text(restaurant.name),
-            actions: const [CartIconButton()],
-            flexibleSpace: FlexibleSpaceBar(
-              background: FoodImage(
-                imageUrl: restaurant.imageUrl,
-                borderRadius: 0,
-                iconSize: 72,
-              ),
+          PhotoHeader(
+            title: restaurant.name,
+            photo: FoodImage(
+              imageUrl: restaurant.imageUrl,
+              borderRadius: 0,
+              iconSize: 72,
             ),
+            trailing: (style) => CartIconButton(style: style),
           ),
           // Shows only on the restaurant that is in the cart.
           SliverToBoxAdapter(
@@ -157,12 +156,13 @@ class _LoadedView extends StatelessWidget {
 class _InfoSection extends StatelessWidget {
   const _InfoSection({required this.restaurant});
 
+  static const closedText = 'Closed now. You can still see the menu.';
+
   final Restaurant restaurant;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final grey = Colors.grey.shade600;
+    final open = restaurant.canTakeOrders;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -174,39 +174,34 @@ class _InfoSection extends StatelessWidget {
               Expanded(
                 child: Text(
                   restaurant.name,
-                  style: textTheme.headlineSmall?.copyWith(
+                  style: const TextStyle(
+                    fontSize: 22,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              _OpenLabel(isOpen: restaurant.isOpen),
+              const SizedBox(width: 8),
+              OpenStatusChip(isOpen: open),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            restaurant.cuisine,
-            style: textTheme.bodyMedium?.copyWith(color: grey),
+          const SizedBox(height: 8),
+          _InfoLine(
+            icon: Icons.restaurant_menu_rounded,
+            text: restaurant.cuisine,
           ),
           const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.location_on_outlined, size: 18, color: grey),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  restaurant.address,
-                  style: textTheme.bodySmall?.copyWith(color: grey),
-                ),
-              ),
-            ],
+          _InfoLine(
+            icon: Icons.location_on_rounded,
+            text: restaurant.address,
           ),
-          if (!restaurant.isOpen) ...[
+          if (!open) ...[
             const SizedBox(height: 12),
             Text(
-              'This restaurant is closed now. You can see the menu, '
-              'but you cannot add food to the cart.',
-              style: textTheme.bodySmall?.copyWith(color: grey),
+              closedText,
+              style: const TextStyle(
+                color: AppTheme.dangerRed,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
           const Divider(height: 28),
@@ -216,27 +211,24 @@ class _InfoSection extends StatelessWidget {
   }
 }
 
-class _OpenLabel extends StatelessWidget {
-  const _OpenLabel({required this.isOpen});
+// An orange icon with grey text, like on the Home cards.
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({required this.icon, required this.text});
 
-  final bool isOpen;
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isOpen ? Colors.green.shade600 : Colors.grey.shade700,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        isOpen ? 'Open' : 'Closed',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppTheme.brandOrange),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text, style: const TextStyle(color: AppTheme.textMuted)),
         ),
-      ),
+      ],
     );
   }
 }
