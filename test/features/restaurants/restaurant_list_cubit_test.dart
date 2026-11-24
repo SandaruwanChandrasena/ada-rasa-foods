@@ -16,6 +16,7 @@ Restaurant restaurant(
   String name,
   String cuisine, {
   bool isOpen = true,
+  bool isActive = true,
 }) {
   return Restaurant(
     id: id,
@@ -26,6 +27,7 @@ Restaurant restaurant(
     latitude: 6.9,
     longitude: 79.8,
     isOpen: isOpen,
+    isActive: isActive,
   );
 }
 
@@ -148,7 +150,8 @@ void main() {
     act: (cubit) => cubit.selectCuisine(null),
     verify: (cubit) {
       expect(cubit.state.selectedCuisine, isNull);
-      expect(cubit.state.visibleRestaurants, all);
+      // Pizza Corner is closed, so it moves to the end.
+      expect(cubit.state.visibleRestaurants, [hotel, dragon, rice, pizza]);
     },
   );
 
@@ -167,6 +170,65 @@ void main() {
 
   test('closed restaurants stay in the list', () {
     expect(loaded.visibleRestaurants, contains(pizza));
+  });
+
+  group('closed places go last', () {
+    RestaurantListState stateWith(List<Restaurant> restaurants) {
+      return RestaurantListState(
+        status: RestaurantListStatus.loaded,
+        restaurants: restaurants,
+      );
+    }
+
+    test('a closed place moves to the end, open ones keep their order', () {
+      expect(loaded.visibleRestaurants, [hotel, dragon, rice, pizza]);
+    });
+
+    test('closed places keep their own order at the end', () {
+      final shut1 = restaurant('c1', 'Shut One', 'Pizza', isOpen: false);
+      final shut2 = restaurant('c2', 'Shut Two', 'Pizza', isOpen: false);
+
+      final state = stateWith([shut1, hotel, shut2, dragon]);
+
+      expect(state.visibleRestaurants, [hotel, dragon, shut1, shut2]);
+    });
+
+    test('a place turned off by the admin also goes last', () {
+      final off = restaurant('x1', 'Turned Off', 'Chinese', isActive: false);
+
+      final state = stateWith([off, hotel, dragon]);
+
+      expect(state.visibleRestaurants, [hotel, dragon, off]);
+    });
+
+    test('with every place open, the order does not change', () {
+      final state = stateWith([rice, dragon, hotel]);
+
+      expect(state.visibleRestaurants, [rice, dragon, hotel]);
+    });
+
+    test('the order also works with a cuisine picked', () {
+      final shutRice = restaurant(
+        'c3',
+        'Shut Rice',
+        'Sri Lankan',
+        isOpen: false,
+      );
+      final state = stateWith([shutRice, hotel, dragon, rice])
+          .copyWith(selectedCuisine: () => 'Sri Lankan');
+
+      expect(state.visibleRestaurants, [hotel, rice, shutRice]);
+    });
+
+    test('a place that closes while the list is open moves down', () {
+      final closedDragon = restaurant('r2', 'Dragon Wok', 'Chinese',
+          isOpen: false);
+      final before = stateWith([hotel, dragon, rice]);
+      final after = before.copyWith(restaurants: [hotel, closedDragon, rice]);
+
+      expect(before.visibleRestaurants, [hotel, dragon, rice]);
+      expect(after.visibleRestaurants, [hotel, rice, closedDragon]);
+    });
   });
 
   test('chips are the cuisines, A to Z, with no copies or empty names', () {
@@ -192,7 +254,8 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(cubit.state.selectedCuisine, isNull);
-    expect(cubit.state.visibleRestaurants, [hotel, pizza, rice]);
+    // Pizza Corner is closed, so it is shown last.
+    expect(cubit.state.visibleRestaurants, [hotel, rice, pizza]);
 
     await cubit.close();
     await controller.close();

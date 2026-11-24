@@ -36,11 +36,12 @@ class RestaurantListState extends Equatable {
     return names;
   }
 
-  // The list the home screen shows. Closed restaurants stay in it.
+  // The list the home screen shows. Closed restaurants stay in it,
+  // but move to the end. Open and closed places each keep their order.
   List<Restaurant> get visibleRestaurants {
     final query = searchText.trim().toLowerCase();
 
-    return restaurants.where((r) {
+    final matches = restaurants.where((r) {
       final cuisineOk =
           selectedCuisine == null || r.cuisine.trim() == selectedCuisine;
       final searchOk = query.isEmpty ||
@@ -48,6 +49,11 @@ class RestaurantListState extends Equatable {
           r.cuisine.toLowerCase().contains(query);
       return cuisineOk && searchOk;
     }).toList();
+
+    return [
+      ...matches.where((r) => r.canTakeOrders),
+      ...matches.where((r) => !r.canTakeOrders),
+    ];
   }
 
   RestaurantListState copyWith({
