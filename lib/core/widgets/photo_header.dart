@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../theme/app_theme.dart';
@@ -8,6 +9,7 @@ typedef PhotoHeaderTrailing = Widget Function(RoundIconStyle style);
 
 // A big photo at the top of a page. On scroll it fades to a white bar
 // with the title, and the buttons turn from white to soft orange.
+// The clock and battery sit on a fixed colour strip, never on the photo.
 class PhotoHeader extends StatelessWidget {
   const PhotoHeader({
     super.key,
@@ -19,6 +21,18 @@ class PhotoHeader extends StatelessWidget {
 
   // Past this much of the scroll, the bar is treated as white.
   static const double solidFrom = 0.6;
+
+  // The strip behind the clock and battery. Change here to try another.
+  static const Color stripColor = AppTheme.brandOrange;
+
+  // How far the white page curves up over the bottom of the photo.
+  static const double curve = 20;
+
+  // White icons on a dark strip, dark icons on a light strip.
+  static SystemUiOverlayStyle get statusIcons =>
+      ThemeData.estimateBrightnessForColor(stripColor) == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark;
 
   final String title;
   final Widget photo;
@@ -77,12 +91,37 @@ class _PhotoHeaderDelegate extends SliverPersistentHeaderDelegate {
             .clamp(0.0, 1.0);
     final barIconSize = Theme.of(context).appBarTheme.iconTheme?.size;
 
-    return Stack(
+    final layers = Stack(
       fit: StackFit.expand,
       children: [
-        photo,
+        Positioned.fill(top: topPadding, child: photo),
         // A colour layer, not Opacity, so scrolling stays smooth.
-        ColoredBox(color: Colors.white.withValues(alpha: t)),
+        Positioned.fill(
+          top: topPadding,
+          child: ColoredBox(color: Colors.white.withValues(alpha: t)),
+        ),
+        // The white page curving up over the photo.
+        const Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: PhotoHeader.curve,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(PhotoHeader.curve),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          height: topPadding,
+          child: const ColoredBox(color: PhotoHeader.stripColor),
+        ),
         Positioned(
           left: 4,
           right: 4,
@@ -129,6 +168,11 @@ class _PhotoHeaderDelegate extends SliverPersistentHeaderDelegate {
           ),
         ),
       ],
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: PhotoHeader.statusIcons,
+      child: layers,
     );
   }
 

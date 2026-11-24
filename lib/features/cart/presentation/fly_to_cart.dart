@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/food_image.dart';
+import '../../../core/widgets/round_icon_button.dart';
 
 // Something the food photo can fly to. The cart icon is one.
 abstract class CartFlyTarget {
@@ -237,10 +238,18 @@ class _FlyingPhotoState extends State<_FlyingPhoto>
               child: FadeTransition(
                 opacity: _fade,
                 child: RepaintBoundary(
-                  child: ClipOval(
-                    child: FoodImage(
-                      imageUrl: widget.imageUrl,
-                      borderRadius: 0,
+                  // A white edge, so the photo shows on any background.
+                  child: DecoratedBox(
+                    position: DecorationPosition.foreground,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: ClipOval(
+                      child: FoodImage(
+                        imageUrl: widget.imageUrl,
+                        borderRadius: 0,
+                      ),
                     ),
                   ),
                 ),
@@ -264,8 +273,6 @@ class _Dustbin extends StatefulWidget {
 }
 
 class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
-  static const double _size = 36;
-
   // Grows in when shown, shrinks away when closed.
   late final AnimationController _appear = AnimationController(
     vsync: this,
@@ -326,26 +333,29 @@ class _DustbinState extends State<_Dustbin> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    // The same size as the round cart button next to it.
+    final iconSize = Theme.of(context).appBarTheme.iconTheme?.size ?? 24;
+    final size = iconSize + RoundIconCircle.padding;
 
     return Stack(
       children: [
         Positioned(
-          left: widget.center.dx - _size / 2,
-          top: widget.center.dy - _size / 2,
-          width: _size,
-          height: _size,
+          left: widget.center.dx - size / 2,
+          top: widget.center.dy - size / 2,
+          width: size,
+          height: size,
           child: IgnorePointer(
             child: ScaleTransition(
               scale: _grow,
               child: RotationTransition(
                 turns: _turns,
-                // Same look as the bag: no background or border, and the
-                // same icon size and color.
-                child: Icon(
-                  Icons.delete_outline,
-                  size: 24,
-                  color: colors.onSurfaceVariant,
+                // A soft red circle, like Delete dish, so it shows on photos.
+                child: IconTheme(
+                  data: IconThemeData(size: iconSize),
+                  child: const RoundIconCircle(
+                    icon: Icons.delete_rounded,
+                    style: RoundIconStyle.danger,
+                  ),
                 ),
               ),
             ),

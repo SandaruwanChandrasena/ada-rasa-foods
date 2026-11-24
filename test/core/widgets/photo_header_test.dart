@@ -1,6 +1,7 @@
 import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/core/widgets/photo_header.dart';
 import 'package:ada_rasa_foods/core/widgets/round_icon_button.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -38,10 +39,16 @@ class HeaderPage extends StatelessWidget {
 }
 
 void main() {
-  Future<void> show(WidgetTester tester, {String? title}) async {
+  Future<void> show(
+    WidgetTester tester, {
+    String? title,
+    double statusBar = 0,
+  }) async {
     // Redmi size: about 393 points wide.
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.75;
+    // The phone's clock and battery area, in points.
+    tester.view.padding = FakeViewPadding(top: statusBar * 2.75);
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
@@ -205,6 +212,96 @@ void main() {
       await scrollBy(tester, 400);
 
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('status bar strip and curve', () {
+    Finder strip() => find.descendant(
+          of: find.byType(PhotoHeader),
+          matching: find.byWidgetPredicate(
+            (w) => w is ColoredBox && w.color == PhotoHeader.stripColor,
+          ),
+        );
+
+    testWidgets('the clock area is a fixed orange strip', (tester) async {
+      await show(tester, statusBar: 24);
+
+      expect(PhotoHeader.stripColor, AppTheme.brandOrange);
+      final rect = tester.getRect(strip());
+      expect(rect.top, 0);
+      expect(rect.height, 24);
+    });
+
+    testWidgets('the strip stays orange after scrolling', (tester) async {
+      await show(tester, statusBar: 24);
+
+      await scrollBy(tester, 400);
+
+      expect(tester.getRect(strip()).height, 24);
+    });
+
+    testWidgets('the photo starts under the strip', (tester) async {
+      await show(tester, statusBar: 24);
+
+      final photo = find.descendant(
+        of: find.byType(PhotoHeader),
+        matching: find.byWidgetPredicate(
+          (w) => w is ColoredBox && w.color == Colors.brown,
+        ),
+      );
+      expect(tester.getRect(photo).top, 24);
+    });
+
+    testWidgets('white clock and battery icons on the orange strip', (
+      tester,
+    ) async {
+      await show(tester, statusBar: 24);
+
+      final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+        find.descendant(
+          of: find.byType(PhotoHeader),
+          matching: find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+        ),
+      );
+      expect(region.value, SystemUiOverlayStyle.light);
+      expect(PhotoHeader.statusIcons, SystemUiOverlayStyle.light);
+    });
+
+    testWidgets('the white page curves up over the photo bottom', (
+      tester,
+    ) async {
+      await show(tester, statusBar: 24);
+
+      final curve = find.descendant(
+        of: find.byType(PhotoHeader),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).borderRadius ==
+                  const BorderRadius.vertical(
+                    top: Radius.circular(PhotoHeader.curve),
+                  ),
+        ),
+      );
+      expect(curve, findsOneWidget);
+      final box = tester.widget<DecoratedBox>(curve).decoration
+          as BoxDecoration;
+      expect(box.color, Colors.white);
+
+      final header = headerSize(tester);
+      expect(tester.getRect(curve).bottom, header.height);
+      expect(tester.getRect(curve).height, PhotoHeader.curve);
+    });
+
+    testWidgets('with the strip, the header is the photo plus the strip', (
+      tester,
+    ) async {
+      await show(tester, statusBar: 24);
+      expect(headerSize(tester).height, 220 + 24);
+
+      await scrollBy(tester, 400);
+      expect(headerSize(tester).height, kToolbarHeight + 24);
     });
   });
 }
