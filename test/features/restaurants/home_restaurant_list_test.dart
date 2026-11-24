@@ -1,5 +1,7 @@
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/core/widgets/fade_slide_in.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
+import 'package:ada_rasa_foods/features/restaurants/presentation/cuisine_row.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/home_restaurant_list.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/restaurant_card.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/restaurant_card_skeleton.dart';
@@ -97,7 +99,7 @@ void main() {
 
     expect(find.byType(RestaurantCardSkeleton), findsNWidgets(3));
     expect(find.byType(RestaurantCard), findsNothing);
-    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.byType(CuisineButton), findsNothing);
   });
 
   testWidgets('cards fade up one by one after loading', (tester) async {
@@ -118,21 +120,22 @@ void main() {
     expect(find.byType(RestaurantCardSkeleton), findsNothing);
   });
 
-  testWidgets('chips fade in when the restaurants arrive', (tester) async {
+  testWidgets('cuisine buttons fade in when the restaurants arrive',
+      (tester) async {
     await showList(tester);
     list.value = loadedWith(4);
     await tester.pump();
 
     final chips = find.ancestor(
-      of: find.byType(ChoiceChip).first,
+      of: find.byType(CuisineButton).first,
       matching: find.byType(FadeSlideIn),
     );
     expect(chips, findsOneWidget);
 
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(ChoiceChip, 'All'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, 'Chinese'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, 'Sri Lankan'), findsOneWidget);
+    expect(find.widgetWithText(CuisineButton, 'All'), findsOneWidget);
+    expect(find.widgetWithText(CuisineButton, 'Chinese'), findsOneWidget);
+    expect(find.widgetWithText(CuisineButton, 'Sri Lankan'), findsOneWidget);
   });
 
   testWidgets('card 7 and later show at once, with no animation',
@@ -195,10 +198,10 @@ void main() {
     expect(opacityOf(tester, 'Place 1'), 1);
   });
 
-  testWidgets('a chip tap does not play it again', (tester) async {
+  testWidgets('a cuisine tap does not play it again', (tester) async {
     await showLoaded(tester, 8);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Chinese'));
+    await tester.tap(find.widgetWithText(CuisineButton, 'Chinese'));
     await tester.pump();
 
     expect(find.text('Place 0'), findsNothing);
@@ -220,6 +223,9 @@ void main() {
   testWidgets('tapping a card opens that restaurant', (tester) async {
     await showLoaded(tester, 4);
 
+    // The round cuisine row is taller, so card 3 starts below the screen.
+    await tester.ensureVisible(find.text('Place 2'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Place 2'));
     await tester.pump();
 
@@ -259,12 +265,12 @@ void main() {
     expect(find.text('Retry'), findsNothing);
   });
 
-  testWidgets('no restaurants shows a message and no chips',
+  testWidgets('no restaurants shows a message and no cuisine buttons',
       (tester) async {
     await showLoaded(tester, 0);
 
     expect(find.text('No restaurants yet.'), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.byType(CuisineButton), findsNothing);
   });
 
   group('header', () {
@@ -338,6 +344,88 @@ void main() {
       await tester.pump();
 
       expect(opened, ['r0']);
+    });
+  });
+
+  group('cuisine buttons', () {
+    CuisineButton button(WidgetTester tester, String label) {
+      return tester.widget<CuisineButton>(
+        find.widgetWithText(CuisineButton, label),
+      );
+    }
+
+    testWidgets('All is selected at first', (tester) async {
+      await showLoaded(tester, 4);
+
+      expect(button(tester, 'All').selected, isTrue);
+      expect(button(tester, 'Chinese').selected, isFalse);
+    });
+
+    testWidgets('each cuisine has its own icon', (tester) async {
+      await showLoaded(tester, 4);
+
+      expect(button(tester, 'All').icon, Icons.restaurant_rounded);
+      expect(button(tester, 'Sri Lankan').icon, Icons.rice_bowl_rounded);
+      expect(button(tester, 'Chinese').icon, Icons.ramen_dining_rounded);
+    });
+
+    testWidgets('tapping a cuisine selects it and filters the list', (
+      tester,
+    ) async {
+      await showLoaded(tester, 4);
+
+      await tester.tap(find.widgetWithText(CuisineButton, 'Sri Lankan'));
+      await tester.pumpAndSettle();
+
+      expect(button(tester, 'Sri Lankan').selected, isTrue);
+      expect(button(tester, 'All').selected, isFalse);
+      expect(find.text('Place 0'), findsOneWidget);
+      expect(find.text('Place 1'), findsNothing);
+    });
+
+    testWidgets('tapping All shows every restaurant again', (tester) async {
+      await showLoaded(tester, 4);
+      await tester.tap(find.widgetWithText(CuisineButton, 'Chinese'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(CuisineButton, 'All'));
+      await tester.pumpAndSettle();
+
+      expect(button(tester, 'All').selected, isTrue);
+      expect(find.text('Place 0'), findsOneWidget);
+      expect(find.text('Place 1'), findsOneWidget);
+    });
+
+    testWidgets('the selected circle is orange with a white icon', (
+      tester,
+    ) async {
+      await showLoaded(tester, 4);
+      await tester.tap(find.widgetWithText(CuisineButton, 'Chinese'));
+      await tester.pumpAndSettle();
+
+      final circle = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: find.widgetWithText(CuisineButton, 'Chinese'),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      final box = circle.decoration! as BoxDecoration;
+      expect(box.color, AppTheme.brandOrange);
+
+      final icon = tester.widget<Icon>(find.byIcon(Icons.ramen_dining_rounded));
+      expect(icon.color, Colors.white);
+    });
+
+    testWidgets('the cuisine row stays put when the list scrolls', (
+      tester,
+    ) async {
+      await showLoaded(tester, 8);
+      final before = tester.getTopLeft(find.text('All')).dy;
+
+      await tester.drag(find.text('Place 1'), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text('All')).dy, before);
     });
   });
 }

@@ -2,11 +2,12 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/fade_slide_in.dart';
 import '../domain/restaurant.dart';
+import 'cuisine_row.dart';
 import 'restaurant_card.dart';
 import 'restaurant_card_skeleton.dart';
 import 'restaurant_list_state.dart';
 
-// The cuisine chips and the restaurant list on the customer home.
+// The round cuisine buttons and the restaurant list on the customer home.
 // The opening (chips fade in, cards fade up one by one) plays only once,
 // when the restaurants first arrive.
 class HomeRestaurantList extends StatefulWidget {
@@ -70,7 +71,7 @@ class _HomeRestaurantListState extends State<HomeRestaurantList> {
             duration: _openingPlayed
                 ? Duration.zero
                 : HomeRestaurantList.chipsDuration,
-            child: _CuisineChips(
+            child: CuisineRow(
               cuisines: state.cuisines,
               selected: state.selectedCuisine,
               onSelected: widget.onCuisineSelected,
@@ -152,45 +153,6 @@ class _HomeRestaurantListState extends State<HomeRestaurantList> {
           : Duration.zero,
       duration: play ? HomeRestaurantList.cardDuration : Duration.zero,
       child: card,
-    );
-  }
-}
-
-class _CuisineChips extends StatelessWidget {
-  const _CuisineChips({
-    required this.cuisines,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<String> cuisines;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    // Null stands for the "All" chip.
-    final options = <String?>[null, ...cuisines];
-
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: options.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final option = options[index];
-          return Center(
-            child: ChoiceChip(
-              label: Text(option ?? 'All'),
-              selected: option == selected,
-              showCheckmark: false,
-              onSelected: (_) => onSelected(option),
-            ),
-          );
-        },
-      ),
     );
   }
 }
