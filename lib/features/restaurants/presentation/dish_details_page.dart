@@ -7,7 +7,6 @@ import '../../../core/utils/price_format.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../../core/widgets/photo_header.dart';
 import '../../cart/presentation/add_to_cart_button.dart';
-import '../../cart/presentation/added_toast.dart';
 import '../../cart/presentation/cart_bar.dart';
 import '../../cart/presentation/cart_cubit.dart';
 import '../../cart/presentation/cart_icon_button.dart';
@@ -285,8 +284,6 @@ class _AddRow extends StatelessWidget {
               dish: dish,
               restaurantName: restaurantName,
               enabled: enabled,
-              // The Add row and the cart bar are both under it here.
-              toastLift: AddedToast.aboveAddRow,
             ),
           ],
         ),

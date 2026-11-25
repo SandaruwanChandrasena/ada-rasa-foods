@@ -2,7 +2,6 @@ import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/features/cart/domain/cart.dart';
 import 'package:ada_rasa_foods/features/cart/domain/cart_item.dart';
 import 'package:ada_rasa_foods/features/cart/presentation/add_to_cart_button.dart';
-import 'package:ada_rasa_foods/features/cart/presentation/added_toast.dart';
 import 'package:ada_rasa_foods/features/cart/presentation/cart_cubit.dart';
 import 'package:ada_rasa_foods/features/cart/presentation/cart_state.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
@@ -56,7 +55,6 @@ void main() {
     WidgetTester tester,
     CartState state, {
     bool enabled = true,
-    double toastLift = AddedToast.aboveCartBar,
   }) async {
     // 360 x 800 points.
     tester.view.physicalSize = const Size(1080, 2400);
@@ -74,7 +72,6 @@ void main() {
                 dish: kottu,
                 restaurantName: 'Kottu Corner',
                 enabled: enabled,
-                toastLift: toastLift,
               ),
             ),
           ),
@@ -90,13 +87,6 @@ void main() {
           .first,
     );
     return box.decoration! as BoxDecoration;
-  }
-
-  // Lets the pop-up go away, so the next test starts clean.
-  Future<void> finish(WidgetTester tester) async {
-    for (var i = 0; i < 60; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
   }
 
   group('AddToCartButton', () {
@@ -178,7 +168,7 @@ void main() {
       expect(button.onPressed, isNull);
     });
   
-    testWidgets('Add shows the "Added to cart" pop-up with the name', (
+    testWidgets('Add shows no "Added to cart" pop-up anymore', (
       tester,
     ) async {
       await show(tester, const CartState(userId: 'u1'));
@@ -187,66 +177,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('Added to cart'), findsOneWidget);
-      expect(find.text('Chicken Kottu'), findsOneWidget);
-
-      await finish(tester);
-    });
-
-    testWidgets('plus on the stepper shows no pop-up', (tester) async {
-      await show(tester, cartWith(2));
-
-      await tester.tap(find.byTooltip('More'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
+      verify(
+        () => cart.addDish(kottu, restaurantName: 'Kottu Corner'),
+      ).called(1);
       expect(find.text('Added to cart'), findsNothing);
-    });
-
-    testWidgets('fast plus taps show no pop-up', (tester) async {
-      await show(tester, cartWith(2));
-
-      for (var i = 0; i < 5; i++) {
-        await tester.tap(find.byTooltip('More'));
-        await tester.pump(const Duration(milliseconds: 40));
-      }
-
-      expect(find.text('Added to cart'), findsNothing);
-    });
-
-    testWidgets('a grey Add shows no pop-up', (tester) async {
-      await show(tester, const CartState(userId: 'u1'), enabled: false);
-
-      await tester.tap(find.text('Add'), warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.text('Added to cart'), findsNothing);
-    });
-
-    testWidgets('the pop-up sits at the height the page asks for', (
-      tester,
-    ) async {
-      await show(
-        tester,
-        const CartState(userId: 'u1'),
-        toastLift: AddedToast.aboveAddRow,
-      );
-
-      await tester.tap(find.text('Add'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      final box = tester.getRect(
-        find
-            .ancestor(
-              of: find.text('Added to cart'),
-              matching: find.byType(Material),
-            )
-            .first,
-      );
-      expect(box.bottom, 800 - AddedToast.aboveAddRow);
-
-      await finish(tester);
     });
   });
 }
