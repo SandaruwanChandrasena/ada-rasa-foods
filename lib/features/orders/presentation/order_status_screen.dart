@@ -8,6 +8,7 @@ import '../../../core/utils/price_format.dart';
 import '../domain/food_order.dart';
 import '../domain/order_status.dart';
 import 'order_status_cubit.dart';
+import 'order_status_header.dart';
 import 'order_status_state.dart';
 
 // One order, live: status steps, pickup address, payment, cancel (CUS-11).
@@ -90,10 +91,13 @@ class _OrderDetails extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        _StatusHeader(order: order),
+        OrderStatusCard(order: order),
         const SizedBox(height: 16),
         if (!stopped) ...[
-          _StatusSteps(current: order.status),
+          OrderStatusSteps(
+            current: order.status,
+            updatedAt: order.updatedAt,
+          ),
           const SizedBox(height: 16),
         ],
         if (order.status == OrderStatus.ready) ...[
@@ -158,130 +162,6 @@ class _OrderDetails extends StatelessWidget {
 }
 
 // The big card at the top: what is happening now.
-class _StatusHeader extends StatelessWidget {
-  const _StatusHeader({required this.order});
-
-  final FoodOrder order;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = order.restaurantName;
-    final bad = order.status == OrderStatus.rejected ||
-        order.status == OrderStatus.cancelled;
-    final color =
-        bad ? Colors.red.shade700 : Theme.of(context).colorScheme.primary;
-
-    final (IconData icon, String message) = switch (order.status) {
-      OrderStatus.placed => (
-          Icons.receipt_long_outlined,
-          'Waiting for $name to accept your order.',
-        ),
-      OrderStatus.accepted => (
-          Icons.thumb_up_alt_outlined,
-          '$name accepted your order.',
-        ),
-      OrderStatus.preparing => (
-          Icons.soup_kitchen_outlined,
-          'Your food is being prepared.',
-        ),
-      OrderStatus.ready => (
-          Icons.shopping_bag_outlined,
-          'Your food is ready. Please collect it.',
-        ),
-      OrderStatus.completed => (
-          Icons.check_circle_outline,
-          'You collected your order. Enjoy your meal!',
-        ),
-      OrderStatus.rejected => (
-          Icons.cancel_outlined,
-          'Sorry, $name could not take your order.',
-        ),
-      OrderStatus.cancelled => (
-          Icons.cancel_outlined,
-          'You cancelled this order.',
-        ),
-      // Stage 2 (delivery) statuses.
-      _ => (Icons.delivery_dining_outlined, order.statusLabel),
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bad ? Colors.red.shade50 : const Color(0xFFFFF1EA),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 36),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  order.statusLabel,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(message),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Placed, Accepted, Preparing, Ready for pickup, Completed.
-class _StatusSteps extends StatelessWidget {
-  const _StatusSteps({required this.current});
-
-  final OrderStatus current;
-
-  @override
-  Widget build(BuildContext context) {
-    final orange = Theme.of(context).colorScheme.primary;
-    final steps = OrderStatus.pickupSteps;
-    final currentIndex = steps.indexOf(current);
-
-    return Column(
-      children: [
-        for (var i = 0; i < steps.length; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                Icon(
-                  i < currentIndex || current == OrderStatus.completed
-                      ? Icons.check_circle
-                      : i == currentIndex
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                  color: i <= currentIndex ? orange : Colors.grey.shade400,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  steps[i].labelFor(Fulfillment.pickup),
-                  style: TextStyle(
-                    fontWeight:
-                        i == currentIndex ? FontWeight.w700 : FontWeight.w400,
-                    color: i <= currentIndex
-                        ? Colors.black87
-                        : Colors.grey.shade500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 // Shown when the food is ready (CUS-11).
 class _PickupAddress extends StatelessWidget {
   const _PickupAddress({required this.order});
