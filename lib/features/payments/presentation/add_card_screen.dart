@@ -446,14 +446,20 @@ class _AddCardViewState extends State<AddCardView>
         children: [
           _itemEnter(
             0,
-            _CardInput(
-              label: 'Card Number',
-              hint: '1234 5678 9012 3456',
-              controller: _numberController,
-              focusNode: _numberFocus,
-              keyboardType: TextInputType.number,
-              formatters: [CardNumberFormatter()],
-              errorText: _numberError,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CardInput(
+                  label: 'Card Number',
+                  hint: '1234 5678 9012 3456',
+                  controller: _numberController,
+                  focusNode: _numberFocus,
+                  keyboardType: TextInputType.number,
+                  formatters: [CardNumberFormatter()],
+                  errorText: _numberError,
+                ),
+                _buildSavedNote(),
+              ],
             ),
           ),
           const SizedBox(height: 20),
@@ -534,6 +540,35 @@ class _AddCardViewState extends State<AddCardView>
     );
   }
 
+  // Warns early. Save still stops a second copy of the same card.
+  Widget _buildSavedNote() {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+    return BlocBuilder<CardsCubit, CardsState>(
+      buildWhen: (previous, current) => previous.cards != current.cards,
+      builder: (context, state) {
+        final saved = CardChecks.findSaved(
+          number: _numberController.text,
+          expiry: _expiryText,
+          cards: state.cards,
+        );
+
+        return AnimatedSize(
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 200),
+          alignment: Alignment.topCenter,
+          child: saved == null
+              ? const SizedBox(width: double.infinity)
+              : const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: _SavedNote(),
+                ),
+        );
+      },
+    );
+  }
+
   Widget _buildSaveArea() {
     return BlocBuilder<CardsCubit, CardsState>(
       buildWhen: (previous, current) =>
@@ -555,6 +590,38 @@ class _AddCardViewState extends State<AddCardView>
           ],
         );
       },
+    );
+  }
+}
+
+// ------------------------------------------------------------ SAVED NOTE
+
+class _SavedNote extends StatelessWidget {
+  const _SavedNote();
+
+  static const Color background = Color(0xFFFFF4D6);
+  static const Color text = Color(0xFF7A5200);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: text, size: 20),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'You already saved this card',
+              style: TextStyle(color: text, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

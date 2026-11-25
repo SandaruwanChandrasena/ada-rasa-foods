@@ -1,4 +1,5 @@
 import 'card_brand.dart';
+import 'payment_card.dart';
 
 // Checks for the Add card form (CUS-9). Each error is a short message.
 class CardChecks {
@@ -100,6 +101,32 @@ class CardChecks {
       buffer.write(digits[i]);
     }
     return buffer.toString();
+  }
+
+  // The saved card with the same type, last 4, and expiry, or null.
+  // Null until the number has 16 digits and the expiry is complete.
+  static PaymentCard? findSaved({
+    required String number,
+    required String expiry,
+    required List<PaymentCard> cards,
+  }) {
+    final digits = digitsOnly(number);
+    final brand = brandOf(digits);
+    final parsed = parseExpiry(expiry);
+    if (digits.length != numberLength || brand == null || parsed == null) {
+      return null;
+    }
+    final (month, year) = parsed;
+    final last4 = last4Of(digits);
+    for (final card in cards) {
+      if (card.brand == brand &&
+          card.last4 == last4 &&
+          card.expMonth == month &&
+          card.expYear == year) {
+        return card;
+      }
+    }
+    return null;
   }
 
   // Only these 4 digits are saved, never the full number.

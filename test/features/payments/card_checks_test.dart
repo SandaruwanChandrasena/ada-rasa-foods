@@ -217,4 +217,55 @@ void main() {
       expect(card.isSameCardAs(withExpiry(8, 2028, last4: '1111')), isFalse);
     });
   });
+
+  group('findSaved', () {
+    const saved = PaymentCard(
+      id: 'c1',
+      brand: CardBrand.visa,
+      last4: '4242',
+      holderName: 'NIMAL PERERA',
+      expMonth: 8,
+      expYear: 2028,
+    );
+
+    PaymentCard? lookUp(String number, String expiry) =>
+        CardChecks.findSaved(
+          number: number,
+          expiry: expiry,
+          cards: const [saved],
+        );
+
+    test('the same type, last 4, and expiry finds the saved card', () {
+      expect(lookUp('4242 4242 4242 4242', '08/28'), saved);
+    });
+
+    test('a different expiry is a new card', () {
+      expect(lookUp('4242424242424242', '09/28'), isNull);
+    });
+
+    test('different last 4 digits is a new card', () {
+      expect(lookUp('4242424242421111', '08/28'), isNull);
+    });
+
+    test('a Mastercard with the same last 4 is a new card', () {
+      expect(lookUp('5555555555554242', '08/28'), isNull);
+    });
+
+    test('nothing is found until the number and expiry are complete', () {
+      expect(lookUp('4242 4242 4242 424', '08/28'), isNull);
+      expect(lookUp('4242424242424242', ''), isNull);
+      expect(lookUp('4242424242424242', '08/2'), isNull);
+    });
+
+    test('no saved cards finds nothing', () {
+      expect(
+        CardChecks.findSaved(
+          number: '4242424242424242',
+          expiry: '08/28',
+          cards: const [],
+        ),
+        isNull,
+      );
+    });
+  });
 }
