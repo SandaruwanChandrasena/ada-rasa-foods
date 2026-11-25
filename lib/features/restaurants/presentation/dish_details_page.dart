@@ -5,6 +5,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/price_format.dart';
 import '../../../core/widgets/food_image.dart';
+import '../../../core/widgets/photo_header.dart';
 import '../../cart/presentation/add_to_cart_button.dart';
 import '../../cart/presentation/cart_bar.dart';
 import '../../cart/presentation/cart_cubit.dart';
@@ -48,6 +49,9 @@ class DishDetailsView extends StatelessWidget {
 
   final String restaurantId;
   final String dishId;
+
+  // Makes the photo of a dish that is not available look faded.
+  static const Color notAvailableFade = Color(0x99FFFFFF);
 
   @override
   Widget build(BuildContext context) {
@@ -160,25 +164,27 @@ class _LoadedView extends StatelessWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 280,
-            title: Text(dish.name),
-            actions: const [CartIconButton()],
-            flexibleSpace: FlexibleSpaceBar(
-              // The card photo grows into this one.
-              background: DishPhotoHero(
-                dishId: dish.id,
-                child: Opacity(
-                  opacity: dish.available ? 1 : 0.4,
-                  child: FoodImage(
+          PhotoHeader(
+            title: dish.name,
+            height: 280,
+            // The card photo grows into this one.
+            photo: DishPhotoHero(
+              dishId: dish.id,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  FoodImage(
                     imageUrl: dish.imageUrl,
                     borderRadius: 0,
                     iconSize: 72,
                   ),
-                ),
+                  // A layer, not Opacity, so it stays smooth.
+                  if (!dish.available)
+                    const ColoredBox(color: DishDetailsView.notAvailableFade),
+                ],
               ),
             ),
+            trailing: (style) => CartIconButton(style: style),
           ),
           // Shows only on the restaurant that is in the cart.
           SliverToBoxAdapter(
@@ -210,12 +216,22 @@ class _LoadedView extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   _CategoryLabel(text: dish.category),
-                  const SizedBox(height: 8),
-                  Text(
-                    'From ${restaurant.name}',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.storefront_rounded,
+                        size: 18,
+                        color: AppTheme.brandOrange,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'From ${restaurant.name}',
+                          style: const TextStyle(color: AppTheme.textMuted),
+                        ),
+                      ),
+                    ],
                   ),
                   if (dish.description.isNotEmpty) ...[
                     const SizedBox(height: 16),
@@ -251,8 +267,8 @@ class _AddRow extends StatelessWidget {
     );
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppTheme.border)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -261,9 +277,7 @@ class _AddRow extends StatelessWidget {
             Expanded(
               child: Text(
                 inCart && enabled ? 'In your cart' : 'Add to your order',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey.shade700,
-                    ),
+                style: const TextStyle(color: AppTheme.textMuted),
               ),
             ),
             AddToCartButton(
@@ -278,6 +292,7 @@ class _AddRow extends StatelessWidget {
   }
 }
 
+// "Not available now" or "Closed now", in soft red.
 class _ProblemLabel extends StatelessWidget {
   const _ProblemLabel({required this.text});
 
@@ -286,18 +301,29 @@ class _ProblemLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade700,
+        color: AppTheme.dangerBg,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.cancel_rounded,
+            size: 16,
+            color: AppTheme.dangerRed,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: const TextStyle(
+              color: AppTheme.dangerRed,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,8 @@
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
+import 'package:ada_rasa_foods/core/widgets/photo_header.dart';
+import 'package:ada_rasa_foods/core/widgets/round_icon_button.dart';
 import 'package:ada_rasa_foods/features/cart/presentation/cart_cubit.dart';
+import 'package:ada_rasa_foods/features/cart/presentation/cart_icon_button.dart';
 import 'package:ada_rasa_foods/features/cart/presentation/cart_state.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/dish_photo_hero.dart';
@@ -221,6 +225,78 @@ void main() {
 
       final hero = tester.widget<Hero>(find.byType(Hero));
       expect(hero.tag, DishPhotoHero.tagFor('d1'));
+    });
+
+    testWidgets('the top is the photo header with the dish name', (
+      tester,
+    ) async {
+      await show(tester, loaded());
+
+      final header = tester.widget<PhotoHeader>(find.byType(PhotoHeader));
+      expect(header.title, 'Chicken Kottu');
+      expect(header.height, 280);
+      expect(find.byType(SliverAppBar), findsNothing);
+    });
+
+    testWidgets('the cart on the photo is a white circle', (tester) async {
+      await show(tester, loaded());
+
+      final cartButton = tester.widget<CartIconButton>(
+        find.byType(CartIconButton),
+      );
+      expect(cartButton.style, RoundIconStyle.onPhoto);
+    });
+
+    Finder fadeLayer() => find.byWidgetPredicate(
+          (w) =>
+              w is ColoredBox && w.color == DishDetailsView.notAvailableFade,
+        );
+
+    testWidgets('a dish not available has a faded photo', (tester) async {
+      await show(tester, loaded(dishes: const [soldOut]));
+
+      expect(fadeLayer(), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(PhotoHeader),
+          matching: find.byType(Opacity),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('an available dish photo is not faded', (tester) async {
+      await show(tester, loaded());
+
+      expect(fadeLayer(), findsNothing);
+    });
+
+    testWidgets('the problem label is soft red with a cross', (tester) async {
+      await show(tester, loaded(restaurant: closedCorner));
+
+      final label = tester.widget<Text>(find.text('Closed now'));
+      expect(label.style?.color, AppTheme.dangerRed);
+      expect(find.byIcon(Icons.cancel_rounded), findsOneWidget);
+
+      final pill = tester.widget<Container>(
+        find
+            .ancestor(
+              of: find.text('Closed now'),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      final box = pill.decoration! as BoxDecoration;
+      expect(box.color, AppTheme.dangerBg);
+    });
+
+    testWidgets('the restaurant line has an orange store icon', (
+      tester,
+    ) async {
+      await show(tester, loaded());
+
+      final icon = tester.widget<Icon>(find.byIcon(Icons.storefront_rounded));
+      expect(icon.color, AppTheme.brandOrange);
     });
 
     testWidgets('it updates live when the dish becomes not available',
