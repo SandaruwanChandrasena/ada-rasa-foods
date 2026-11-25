@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/pop_on_change.dart';
 import '../../menu/domain/dish.dart';
 import '../domain/cart.dart';
 import 'cart_cubit.dart';
@@ -16,10 +17,14 @@ class AddToCartButton extends StatelessWidget {
     required this.dish,
     required this.restaurantName,
     required this.enabled,
+    this.inCart = false,
   });
 
   final Dish dish;
   final String restaurantName;
+
+  // On the cart page: "-" stops at 1 (the bin removes) and the amount pops.
+  final bool inCart;
 
   // False when the restaurant is closed or the dish is not available.
   // Then a grey Add shows, even if the dish is in the cart.
@@ -48,6 +53,8 @@ class AddToCartButton extends StatelessWidget {
                   key: const ValueKey('stepper'),
                   quantity: quantity,
                   canAdd: quantity < Cart.maxQuantity,
+                  canRemove: !inCart || quantity > 1,
+                  pop: inCart,
                   onMinus: () {
                     context.read<CartCubit>().decrease(dish.id);
                     flyToBin(context, imageUrl: dish.imageUrl);
@@ -124,17 +131,30 @@ class _Stepper extends StatelessWidget {
     super.key,
     required this.quantity,
     required this.canAdd,
+    required this.canRemove,
+    required this.pop,
     required this.onMinus,
     required this.onPlus,
   });
 
   final int quantity;
   final bool canAdd;
+  final bool canRemove;
+  final bool pop;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
 
   @override
   Widget build(BuildContext context) {
+    final amount = Text(
+      '$quantity',
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: AppTheme.deepOrange,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+
     // Soft orange, with no border, like the round buttons.
     return Container(
       height: 36,
@@ -148,18 +168,11 @@ class _Stepper extends StatelessWidget {
           _StepButton(
             icon: Icons.remove_rounded,
             tooltip: 'Less',
-            onPressed: onMinus,
+            onPressed: canRemove ? onMinus : null,
           ),
           SizedBox(
             width: 24,
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.deepOrange,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: pop ? PopOnChange(value: quantity, child: amount) : amount,
           ),
           _StepButton(
             icon: Icons.add_rounded,
@@ -190,6 +203,8 @@ class _StepButton extends StatelessWidget {
       onPressed: onPressed,
       icon: Icon(icon, size: 18),
       color: AppTheme.brandOrange,
+      // A light orange when it can't be tapped.
+      disabledColor: const Color(0x55FF5000),
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 36, height: 34),
     );

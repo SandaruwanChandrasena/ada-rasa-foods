@@ -6,6 +6,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/price_format.dart';
 import '../../../core/widgets/food_image.dart';
+import '../../../core/widgets/pop_on_change.dart';
 import '../../../core/widgets/round_icon_button.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../menu/domain/dish.dart';
@@ -164,12 +165,17 @@ class _SummaryLine extends StatelessWidget {
             ),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            color: isTotal ? AppTheme.brandOrange : AppTheme.textMuted,
-            fontSize: isTotal ? 18 : 14,
-            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+        // The total pops when + or - changes it.
+        PopOnChange(
+          value: isTotal ? value : '',
+          scale: 1.15,
+          child: Text(
+            value,
+            style: TextStyle(
+              color: isTotal ? AppTheme.brandOrange : AppTheme.textMuted,
+              fontSize: isTotal ? 18 : 14,
+              fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+            ),
           ),
         ),
       ],
@@ -381,6 +387,7 @@ class _CartItemRow extends StatelessWidget {
               dish: dish,
               restaurantName: restaurantName,
               enabled: true,
+              inCart: true,
             ),
           IconButton(
             tooltip: 'Remove',

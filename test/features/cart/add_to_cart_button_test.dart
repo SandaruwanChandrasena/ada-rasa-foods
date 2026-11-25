@@ -1,4 +1,5 @@
 import 'package:ada_rasa_foods/core/theme/app_theme.dart';
+import 'package:ada_rasa_foods/core/widgets/pop_on_change.dart';
 import 'package:ada_rasa_foods/features/cart/domain/cart.dart';
 import 'package:ada_rasa_foods/features/cart/domain/cart_item.dart';
 import 'package:ada_rasa_foods/features/cart/presentation/add_to_cart_button.dart';
@@ -55,6 +56,7 @@ void main() {
     WidgetTester tester,
     CartState state, {
     bool enabled = true,
+    bool inCart = false,
   }) async {
     // 360 x 800 points.
     tester.view.physicalSize = const Size(1080, 2400);
@@ -72,6 +74,7 @@ void main() {
                 dish: kottu,
                 restaurantName: 'Kottu Corner',
                 enabled: enabled,
+                inCart: inCart,
               ),
             ),
           ),
@@ -181,6 +184,55 @@ void main() {
         () => cart.addDish(kottu, restaurantName: 'Kottu Corner'),
       ).called(1);
       expect(find.text('Added to cart'), findsNothing);
+    });
+
+    IconButton stepButton(WidgetTester tester, IconData icon) {
+      return tester.widget<IconButton>(
+        find.ancestor(of: find.byIcon(icon), matching: find.byType(IconButton)),
+      );
+    }
+
+    testWidgets('on the menu, minus works at 1 (it removes the dish)', (
+      tester,
+    ) async {
+      await show(tester, cartWith(1));
+
+      expect(stepButton(tester, Icons.remove_rounded).onPressed, isNotNull);
+      await tester.tap(find.byTooltip('Less'));
+      verify(() => cart.decrease('d1')).called(1);
+    });
+
+    testWidgets('in the cart, minus at 1 is light and cannot be tapped', (
+      tester,
+    ) async {
+      await show(tester, cartWith(1), inCart: true);
+
+      final minus = stepButton(tester, Icons.remove_rounded);
+      expect(minus.onPressed, isNull);
+      expect(minus.disabledColor, const Color(0x55FF5000));
+
+      await tester.tap(find.byTooltip('Less'), warnIfMissed: false);
+      verifyNever(() => cart.decrease(any()));
+      expect(stepButton(tester, Icons.add_rounded).onPressed, isNotNull);
+    });
+
+    testWidgets('in the cart, minus works again from 2', (tester) async {
+      await show(tester, cartWith(2), inCart: true);
+
+      await tester.tap(find.byTooltip('Less'));
+
+      verify(() => cart.decrease('d1')).called(1);
+    });
+
+    testWidgets('only the cart stepper pops its amount', (tester) async {
+      await show(tester, cartWith(2), inCart: true);
+      expect(
+        find.ancestor(of: find.text('2'), matching: find.byType(PopOnChange)),
+        findsOneWidget,
+      );
+
+      await show(tester, cartWith(2));
+      expect(find.byType(PopOnChange), findsNothing);
     });
   });
 }
