@@ -110,7 +110,7 @@ class _AddButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       onPressed: onPressed,
-      icon: const Icon(Icons.add, size: 18),
+      icon: const Icon(Icons.add_rounded, size: 18),
       label: const Text('Add'),
     );
   }
@@ -132,26 +132,34 @@ class _Stepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Soft orange, with no border, like the round buttons.
     return Container(
       height: 36,
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.brandOrange),
+        color: AppTheme.softOrange,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StepButton(icon: Icons.remove, tooltip: 'Less', onPressed: onMinus),
+          _StepButton(
+            icon: Icons.remove_rounded,
+            tooltip: 'Less',
+            onPressed: onMinus,
+          ),
           SizedBox(
             width: 24,
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: AppTheme.deepOrange,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           _StepButton(
-            icon: Icons.add,
+            icon: Icons.add_rounded,
             tooltip: 'More',
             onPressed: canAdd ? onPlus : null,
           ),

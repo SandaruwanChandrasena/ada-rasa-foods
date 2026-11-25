@@ -15,6 +15,11 @@ class DishRow extends StatelessWidget {
     this.onTap,
   });
 
+  static const double photoSize = 88;
+
+  // Makes the photo of a dish that is not available look faded.
+  static const Color notAvailableFade = Color(0x99FFFFFF);
+
   final Dish dish;
 
   // Shown next to the price, like the Add button from the cart feature.
@@ -26,13 +31,28 @@ class DishRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final available = dish.available;
 
-    final photo = FoodImage(
-      imageUrl: dish.imageUrl,
-      width: 84,
-      height: 84,
-      iconSize: 32,
+    // A layer, not Opacity, so long menus scroll smoothly.
+    final photo = Stack(
+      children: [
+        FoodImage(
+          imageUrl: dish.imageUrl,
+          width: photoSize,
+          height: photoSize,
+          borderRadius: 14,
+          iconSize: 32,
+        ),
+        if (!available)
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: notAvailableFade,
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+      ],
     );
 
     final content = Row(
@@ -48,9 +68,17 @@ class DishRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!available) ...[
+                const _NotAvailableLabel(),
+                const SizedBox(height: 4),
+              ],
               Text(
                 dish.name,
-                style: textTheme.titleSmall?.copyWith(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: available ? AppTheme.textDark : AppTheme.textMuted,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -58,21 +86,25 @@ class DishRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   dish.description,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 13,
+                  ),
                 ),
               ],
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       formatPrice(dish.price),
-                      style: textTheme.titleSmall?.copyWith(
-                        color: AppTheme.brandOrange,
+                      style: TextStyle(
+                        color: available
+                            ? AppTheme.brandOrange
+                            : AppTheme.textMuted,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -86,21 +118,11 @@ class DishRow extends StatelessWidget {
       ],
     );
 
-    // Not available: faded, with a label on top.
-    final body = dish.available
-        ? content
-        : Stack(
-            children: [
-              Opacity(opacity: 0.4, child: content),
-              const Positioned(top: 0, right: 0, child: _NotAvailableLabel()),
-            ],
-          );
-
     final tap = onTap;
     if (tap == null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: body,
+        child: content,
       );
     }
 
@@ -108,39 +130,47 @@ class DishRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Material(
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppTheme.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: tap,
-          child: Padding(padding: const EdgeInsets.all(10), child: body),
+          child: Padding(padding: const EdgeInsets.all(12), child: content),
         ),
       ),
     );
   }
 }
 
+// "Not available" in soft red, like the labels on the dish page.
 class _NotAvailableLabel extends StatelessWidget {
   const _NotAvailableLabel();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
       decoration: BoxDecoration(
-        color: Colors.grey.shade700,
+        color: AppTheme.dangerBg,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
-        'Not available',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cancel_rounded, size: 14, color: AppTheme.dangerRed),
+          SizedBox(width: 3),
+          Text(
+            'Not available',
+            style: TextStyle(
+              color: AppTheme.dangerRed,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

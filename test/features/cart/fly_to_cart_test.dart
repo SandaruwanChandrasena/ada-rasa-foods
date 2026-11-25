@@ -66,9 +66,13 @@ void main() {
       );
 
   // Lets the photo land and the bin close, so the next test starts clean.
+  // Small steps, because each animation needs frames to move, and the
+  // bin only starts closing after a timer.
   Future<void> finish(WidgetTester tester) async {
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump(const Duration(seconds: 1));
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byType(RoundIconCircle), findsNothing);
   }
 
   group('flyToBin', () {
