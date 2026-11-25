@@ -8,9 +8,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../domain/card_repository.dart';
 import '../domain/payment_card.dart';
-import 'card_art.dart';
 import 'cards_cubit.dart';
 import 'cards_state.dart';
+import 'mini_card.dart';
 
 // My cards: saved demo cards, set default, delete, add (CUS-9).
 class MyCardsScreen extends StatelessWidget {
@@ -60,22 +60,29 @@ class MyCardsView extends StatelessWidget {
             CardsStatus.loading =>
               const Center(child: CircularProgressIndicator()),
             CardsStatus.failure => _MessageView(
-                message: state.errorMessage ?? 'Something went wrong.',
+                icon: Icons.wifi_off_rounded,
+                title: state.errorMessage ?? 'Something went wrong.',
                 buttonText: 'Retry',
                 onPressed: () => context.read<CardsCubit>().retry(),
               ),
             CardsStatus.loaded when state.cards.isEmpty =>
               const _EmptyCards(),
-            CardsStatus.loaded => ListView.separated(
+            CardsStatus.loaded => ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                itemCount: state.cards.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) => _CardRow(
-                  card: state.cards[index],
-                  now: context.read<CardsCubit>().now,
-                  enabled: !state.isWorking,
-                ),
+                children: [
+                  for (final card in state.cards)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _CardRow(
+                        key: ValueKey('card_${card.id}'),
+                        card: card,
+                        now: context.read<CardsCubit>().now,
+                        enabled: !state.isWorking,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  const _SafeNote(),
+                ],
               ),
           },
           bottomNavigationBar: state.status == CardsStatus.loaded
@@ -89,10 +96,14 @@ class MyCardsView extends StatelessWidget {
 
 class _CardRow extends StatelessWidget {
   const _CardRow({
+    super.key,
     required this.card,
     required this.now,
     required this.enabled,
   });
+
+  // Makes an expired card look faded. A layer, not Opacity.
+  static const Color fade = Color(0x99FFFFFF);
 
   final PaymentCard card;
   final DateTime now;
@@ -100,77 +111,83 @@ class _CardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final expired = card.isExpired(now);
+    final radius = BorderRadius.circular(16);
+    final showSetDefault = !card.isDefault && !expired;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+      foregroundDecoration: expired
+          ? BoxDecoration(color: fade, borderRadius: radius)
+          : null,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: card.isDefault
-              ? AppTheme.brandOrange
-              : Colors.grey.shade300,
-          width: card.isDefault ? 1.5 : 1,
-        ),
+        borderRadius: radius,
+        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // The logo on a light box.
-          Container(
-            width: 58,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: CardBrandLogo(
-              brand: card.brand,
-              height: 22,
-              visaColor: const Color(0xFF1A1F71),
-            ),
-          ),
+          MiniCard(card: card),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  card.title,
-                  style: textTheme.titleSmall?.copyWith(
+                  card.brand.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textDark,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
+                  'Ending in ${card.last4}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppTheme.textMuted),
+                ),
+                Text(
                   expired
                       ? 'Expired ${card.expiryText}'
                       : 'Expires ${card.expiryText}',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: expired
-                        ? Colors.red.shade700
-                        : Colors.grey.shade600,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: expired ? AppTheme.dangerRed : AppTheme.textMuted,
+                    fontSize: 13,
                   ),
                 ),
-                if (card.isDefault || card.alwaysFails) ...[
-                  const SizedBox(height: 6),
+                if (card.isDefault || card.alwaysFails || showSetDefault) ...[
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
-                    runSpacing: 4,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       if (card.isDefault)
                         const _Label(
                           text: 'Default',
-                          color: AppTheme.brandOrange,
-                          background: Color(0xFFFFF1EA),
+                          color: AppTheme.deepOrange,
+                          background: AppTheme.softOrange,
+                        ),
+                      if (showSetDefault)
+                        _SetDefaultButton(
+                          onPressed: enabled
+                              ? () => context
+                                  .read<CardsCubit>()
+                                  .setDefault(card)
+                              : null,
                         ),
                       if (card.alwaysFails)
-                        _Label(
+                        const _Label(
                           text: 'Always fails (demo)',
-                          color: Colors.grey.shade700,
-                          background: Colors.grey.shade200,
+                          color: AppTheme.textMuted,
+                          background: Color(0xFFEFEFEF),
                         ),
                     ],
                   ),
@@ -181,16 +198,13 @@ class _CardRow extends StatelessWidget {
           PopupMenuButton<String>(
             tooltip: 'Card options',
             enabled: enabled,
-            onSelected: (choice) => choice == 'default'
-                ? context.read<CardsCubit>().setDefault(card)
-                : _confirmDelete(context),
-            itemBuilder: (context) => [
-              if (!card.isDefault)
-                const PopupMenuItem(
-                  value: 'default',
-                  child: Text('Set as default'),
-                ),
-              const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            icon: const Icon(
+              Icons.more_vert_rounded,
+              color: AppTheme.textMuted,
+            ),
+            onSelected: (_) => _confirmDelete(context),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
           ),
         ],
@@ -221,7 +235,7 @@ class _CardRow extends StatelessWidget {
             // The app theme makes FilledButton full width, so we set a size.
             style: FilledButton.styleFrom(
               minimumSize: const Size(88, 40),
-              backgroundColor: Colors.red.shade700,
+              backgroundColor: AppTheme.dangerRed,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Delete'),
@@ -264,6 +278,62 @@ class _Label extends StatelessWidget {
   }
 }
 
+class _SetDefaultButton extends StatelessWidget {
+  const _SetDefaultButton({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        foregroundColor: AppTheme.deepOrange,
+        backgroundColor: AppTheme.softOrange,
+        minimumSize: const Size(0, 30),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+      ),
+      onPressed: onPressed,
+      child: const Text(
+        'Set as default',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+// Green note under the cards. True: only the last 4 digits are saved.
+class _SafeNote extends StatelessWidget {
+  const _SafeNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.successBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.verified_user_rounded, color: AppTheme.successGreen),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Your card information is safe. '
+              'Only the last 4 digits are saved.',
+              style: TextStyle(color: AppTheme.successGreen),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AddCardBar extends StatelessWidget {
   const _AddCardBar({required this.full});
 
@@ -283,13 +353,16 @@ class _AddCardBar extends StatelessWidget {
                 'You can save up to ${CardRepository.maxCards} cards. '
                 'Delete one to add another.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textMuted,
+                ),
               ),
               const SizedBox(height: 8),
             ],
             FilledButton.icon(
               onPressed: full ? null : () => context.push(AppRoutes.addCard),
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add_rounded),
               label: const Text('Add card'),
             ),
           ],
@@ -304,53 +377,68 @@ class _EmptyCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.credit_card_outlined,
-              size: 56,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 12),
-            const Text('You have no saved cards yet.'),
-            const SizedBox(height: 6),
-            Text(
-              'Add a demo card to pay at checkout.',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-      ),
+    return const _MessageView(
+      icon: Icons.credit_card_rounded,
+      title: 'No saved cards yet',
+      message: 'Add a demo card to pay at checkout.',
     );
   }
 }
 
 class _MessageView extends StatelessWidget {
   const _MessageView({
-    required this.message,
-    required this.buttonText,
-    required this.onPressed,
+    required this.icon,
+    required this.title,
+    this.message,
+    this.buttonText,
+    this.onPressed,
   });
 
-  final String message;
-  final String buttonText;
-  final VoidCallback onPressed;
+  final IconData icon;
+  final String title;
+  final String? message;
+  final String? buttonText;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center),
+            Container(
+              width: 96,
+              height: 96,
+              decoration: const BoxDecoration(
+                color: AppTheme.softOrange,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 48, color: AppTheme.brandOrange),
+            ),
             const SizedBox(height: 16),
-            OutlinedButton(onPressed: onPressed, child: Text(buttonText)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppTheme.textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.textMuted),
+              ),
+            ],
+            if (buttonText != null) ...[
+              const SizedBox(height: 20),
+              FilledButton(onPressed: onPressed, child: Text(buttonText!)),
+            ],
           ],
         ),
       ),
