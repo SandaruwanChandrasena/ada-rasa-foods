@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../menu/domain/dish.dart';
 import '../domain/cart.dart';
 import 'cart_cubit.dart';
+import 'added_toast.dart';
 import 'cart_state.dart';
 import 'clear_cart_dialog.dart';
 import 'fly_to_cart.dart';
@@ -16,10 +17,14 @@ class AddToCartButton extends StatelessWidget {
     required this.dish,
     required this.restaurantName,
     required this.enabled,
+    this.toastLift = AddedToast.aboveCartBar,
   });
 
   final Dish dish;
   final String restaurantName;
+
+  // How high the "Added to cart" pop-up sits on this page.
+  final double toastLift;
 
   // False when the restaurant is closed or the dish is not available.
   // Then a grey Add shows, even if the dish is in the cart.
@@ -69,8 +74,11 @@ class AddToCartButton extends StatelessWidget {
 
     final result = cubit.addDish(dish, restaurantName: restaurantName);
     switch (result) {
+      // Add only shows when the dish is not in the cart yet, so this is
+      // always a new dish. Plus on the stepper shows no pop-up.
       case AddToCartResult.added:
         flyToCart(context, imageUrl: dish.imageUrl);
+        showAddedToast(context, dishName: dish.name, lift: toastLift);
       case AddToCartResult.otherRestaurant:
         final yes = await showClearCartDialog(
           context,
@@ -78,7 +86,10 @@ class AddToCartButton extends StatelessWidget {
         );
         if (!yes) return;
         cubit.clearAndAdd(dish, restaurantName: restaurantName);
-        if (context.mounted) flyToCart(context, imageUrl: dish.imageUrl);
+        if (context.mounted) {
+          flyToCart(context, imageUrl: dish.imageUrl);
+          showAddedToast(context, dishName: dish.name, lift: toastLift);
+        }
       case AddToCartResult.maxReached:
         messenger.showSnackBar(
           const SnackBar(
