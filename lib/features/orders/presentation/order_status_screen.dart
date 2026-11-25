@@ -4,9 +4,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/utils/price_format.dart';
-import '../domain/food_order.dart';
 import '../domain/order_status.dart';
+import 'order_details_cards.dart';
 import 'order_status_cubit.dart';
 import 'order_status_header.dart';
 import 'order_status_state.dart';
@@ -83,8 +82,6 @@ class _OrderDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final order = state.order!;
-    final textTheme = Theme.of(context).textTheme;
-    final bold = textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700);
     final stopped = order.status == OrderStatus.rejected ||
         order.status == OrderStatus.cancelled;
 
@@ -92,220 +89,32 @@ class _OrderDetails extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         OrderStatusCard(order: order),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         if (!stopped) ...[
           OrderStatusSteps(
             current: order.status,
             updatedAt: order.updatedAt,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ],
         if (order.status == OrderStatus.ready) ...[
-          _PickupAddress(order: order),
-          const SizedBox(height: 16),
+          OrderPickupAtCard(order: order),
+          const SizedBox(height: 12),
         ],
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.storefront_outlined),
-          title: Text(order.restaurantName, style: bold),
-          subtitle: Text(_placedText(context, order)),
-        ),
-        const Divider(),
-        const SizedBox(height: 8),
-        Text('Your order', style: bold),
-        const SizedBox(height: 8),
-        for (final item in order.items)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 36,
-                  child: Text(
-                    '${item.quantity} x',
-                    style: textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Expanded(child: Text(item.name)),
-                const SizedBox(width: 12),
-                Text(formatPrice(item.lineTotal)),
-              ],
-            ),
-          ),
-        const Divider(height: 24),
-        Row(
-          children: [
-            Text('Total', style: bold),
-            const Spacer(),
-            Text(formatPrice(order.total), style: bold),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _PaymentInfo(order: order),
+        OrderPickupFromCard(order: order),
+        const SizedBox(height: 12),
+        OrderItemsCard(order: order),
+        const SizedBox(height: 12),
+        OrderPaymentCard(order: order),
         if (state.canCancel || state.isCancelling) ...[
-          const SizedBox(height: 24),
-          _CancelButton(isCancelling: state.isCancelling),
+          const SizedBox(height: 20),
+          OrderCancelButton(
+            isCancelling: state.isCancelling,
+            onCancel: () => context.read<OrderStatusCubit>().cancel(),
+          ),
         ],
       ],
     );
-  }
-
-  String _placedText(BuildContext context, FoodOrder order) {
-    final placedAt = order.placedAt;
-    if (placedAt == null) return 'Pickup order';
-    final time = TimeOfDay.fromDateTime(placedAt).format(context);
-    return 'Pickup order. Placed at $time';
-  }
-}
-
-// The big card at the top: what is happening now.
-// Shown when the food is ready (CUS-11).
-class _PickupAddress extends StatelessWidget {
-  const _PickupAddress({required this.order});
-
-  final FoodOrder order;
-
-  @override
-  Widget build(BuildContext context) {
-    final orange = Theme.of(context).colorScheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        border: Border.all(color: orange, width: 1.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.location_on_outlined, color: orange),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Pick up your food at',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(order.restaurantName),
-                Text(order.restaurantAddress),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentInfo extends StatelessWidget {
-  const _PaymentInfo({required this.order});
-
-  final FoodOrder order;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = formatPrice(order.total);
-    final brand = order.cardBrand == 'mastercard' ? 'Mastercard' : 'Visa';
-    final stopped = order.status == OrderStatus.rejected ||
-        order.status == OrderStatus.cancelled;
-
-    final (IconData icon, String text) = switch (order.paymentStatus) {
-      PaymentStatus.refunded => (
-          Icons.replay,
-          'Refunded (demo) to $brand ending ${order.cardLast4}',
-        ),
-      PaymentStatus.paid when order.isCard => (
-          Icons.credit_card,
-          'Paid by $brand ending ${order.cardLast4}',
-        ),
-      PaymentStatus.paid => (Icons.payments_outlined, 'Paid in cash'),
-      // A stopped cash order took no money.
-      PaymentStatus.pending when stopped => (
-          Icons.payments_outlined,
-          'No payment needed',
-        ),
-      PaymentStatus.pending => (
-          Icons.payments_outlined,
-          'Pay at pickup: $total',
-        ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey.shade700),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text)),
-        ],
-      ),
-    );
-  }
-}
-
-class _CancelButton extends StatelessWidget {
-  const _CancelButton({required this.isCancelling});
-
-  final bool isCancelling;
-
-  @override
-  Widget build(BuildContext context) {
-    final red = Colors.red.shade700;
-
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: red,
-        side: BorderSide(color: red),
-        minimumSize: const Size.fromHeight(48),
-      ),
-      onPressed: isCancelling ? null : () => _confirmCancel(context),
-      child: isCancelling
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            )
-          : const Text('Cancel order'),
-    );
-  }
-
-  // Asks first, so a wrong tap does not cancel the order.
-  Future<void> _confirmCancel(BuildContext context) async {
-    final cubit = context.read<OrderStatusCubit>();
-
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Cancel this order?'),
-        content: const Text('The restaurant will not make this order.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Keep order'),
-          ),
-          FilledButton(
-            // The app theme makes FilledButton full width, so we set a size.
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(88, 40),
-              backgroundColor: Colors.red.shade700,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Cancel order'),
-          ),
-        ],
-      ),
-    );
-    if (yes ?? false) await cubit.cancel();
   }
 }
 
