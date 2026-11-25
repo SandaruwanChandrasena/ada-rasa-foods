@@ -62,7 +62,9 @@ class _CartIconButtonState extends State<CartIconButton>
   Offset? get centerOnScreen {
     if (!mounted) return null;
     // Only the icon on the page the customer sees now.
-    final isTopPage = _route?.isCurrent ?? true;
+    // A tab under a page like the cart is hidden, so its tickers are off.
+    final shown = TickerMode.getValuesNotifier(context).value.enabled;
+    final isTopPage = (_route?.isCurrent ?? true) && shown;
     final box = context.findRenderObject();
     if (!isTopPage || box is! RenderBox || !box.attached) return null;
     return box.localToGlobal(box.size.center(Offset.zero));
