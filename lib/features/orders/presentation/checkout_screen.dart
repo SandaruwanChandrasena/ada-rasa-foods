@@ -5,7 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/price_format.dart';
+import '../../../core/widgets/section_card.dart';
 import '../../auth/domain/phone_checks.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../cart/presentation/cart_cubit.dart';
@@ -20,6 +20,7 @@ import '../../payments/presentation/payment_options.dart';
 import '../../payments/presentation/payment_state.dart';
 import 'checkout_cubit.dart';
 import 'checkout_payment_view.dart';
+import 'checkout_sections.dart';
 import 'checkout_state.dart';
 
 // Checkout: check the order, pick how to pay, and place it (CUS-4).
@@ -268,7 +269,6 @@ class _CheckoutViewState extends State<_CheckoutView> {
                   : _PlaceOrderBar(
                       cart: cart,
                       checkout: checkout,
-                      card: card,
                       busy: busy,
                       cardsLoading: cards.status == CardsStatus.loading,
                       phoneMissing: !PhoneChecks.isValid(phone),
@@ -339,87 +339,28 @@ class _OrderSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final bold = textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700);
     final problem = cart.canCheckout ? null : cart.problemMessage;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        if (problem != null) _ProblemBanner(message: problem),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.storefront_outlined),
-          title: Text(cart.cart.restaurantName, style: bold),
-          subtitle: const Text('Pickup order. You collect it yourself.'),
+        if (problem != null) CheckoutProblemBanner(message: problem),
+        CheckoutPickupCard(restaurantName: cart.cart.restaurantName),
+        const SizedBox(height: 12),
+        CheckoutOrderCard(items: cart.cart.items, total: cart.total),
+        const SizedBox(height: 12),
+        SectionCard(
+          icon: Icons.phone_rounded,
+          title: 'Contact',
+          child: contact,
         ),
-        const Divider(),
-        const SizedBox(height: 8),
-        Text('Your order', style: bold),
-        const SizedBox(height: 8),
-        for (final item in cart.cart.items)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 36,
-                  child: Text(
-                    '${item.quantity} x',
-                    style: textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Expanded(child: Text(item.name)),
-                const SizedBox(width: 12),
-                Text(formatPrice(item.lineTotal)),
-              ],
-            ),
-          ),
-        const Divider(height: 24),
-        Row(
-          children: [
-            Text('Total', style: bold),
-            const Spacer(),
-            Text(formatPrice(cart.total), style: bold),
-          ],
+        const SizedBox(height: 12),
+        SectionCard(
+          icon: Icons.account_balance_wallet_rounded,
+          title: 'Payment',
+          child: payment,
         ),
-        const SizedBox(height: 24),
-        Text('Contact', style: bold),
-        const SizedBox(height: 8),
-        contact,
-        const SizedBox(height: 24),
-        Text('Payment', style: bold),
-        const SizedBox(height: 8),
-        payment,
       ],
-    );
-  }
-}
-
-class _ProblemBanner extends StatelessWidget {
-  const _ProblemBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700),
-          const SizedBox(width: 10),
-          Expanded(child: Text(message)),
-        ],
-      ),
     );
   }
 }
@@ -428,7 +369,6 @@ class _PlaceOrderBar extends StatelessWidget {
   const _PlaceOrderBar({
     required this.cart,
     required this.checkout,
-    required this.card,
     required this.busy,
     required this.cardsLoading,
     required this.phoneMissing,
@@ -437,9 +377,6 @@ class _PlaceOrderBar extends StatelessWidget {
 
   final CartState cart;
   final CheckoutState checkout;
-
-  // The chosen card. Null means cash.
-  final PaymentCard? card;
 
   // True while placing a cash order or paying by card.
   final bool busy;
@@ -462,27 +399,15 @@ class _PlaceOrderBar extends StatelessWidget {
 
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+          border: Border(top: BorderSide(color: AppTheme.border)),
         ),
-        child: FilledButton(
+        child: PlaceOrderButton(
+          total: cart.total,
+          placing: checkout.isPlacing,
           onPressed: canPlace ? onPlace : null,
-          child: checkout.isPlacing
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  card == null
-                      ? 'Place order'
-                      : 'Pay ${formatPrice(cart.total)}',
-                ),
         ),
       ),
     );
@@ -506,9 +431,9 @@ class CheckoutPhoneBox extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!PhoneChecks.isValid(phone)) {
       return Container(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF1EA),
+          color: AppTheme.softOrange,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppTheme.brandOrange),
         ),
@@ -517,7 +442,10 @@ class CheckoutPhoneBox extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.phone_in_talk_outlined, color: AppTheme.brandOrange),
+                Icon(
+                  Icons.phone_in_talk_rounded,
+                  color: AppTheme.brandOrange,
+                ),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -530,7 +458,7 @@ class CheckoutPhoneBox extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 onPressed: onAddPhone,
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add_rounded),
                 label: const Text('Add phone'),
               ),
             ),
@@ -539,15 +467,38 @@ class CheckoutPhoneBox extends StatelessWidget {
       );
     }
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.phone_outlined),
-      title: const Text('The restaurant may call you at'),
-      subtitle: Text(PhoneChecks.format(phone)),
-      trailing: TextButton(
-        onPressed: onChangePhone,
-        child: const Text('Change'),
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'The restaurant may call you at',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                PhoneChecks.format(phone),
+                style: const TextStyle(
+                  color: AppTheme.textDark,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor: AppTheme.softOrange,
+            shape: const StadiumBorder(),
+          ),
+          onPressed: onChangePhone,
+          child: const Text('Change'),
+        ),
+      ],
     );
   }
 }
