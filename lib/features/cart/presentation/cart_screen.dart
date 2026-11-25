@@ -3,8 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/price_format.dart';
 import '../../../core/widgets/food_image.dart';
+import '../../../core/widgets/round_icon_button.dart';
+import '../../../core/widgets/section_card.dart';
 import '../../menu/domain/dish.dart';
 import '../domain/cart_item.dart';
 import 'add_to_cart_button.dart';
@@ -26,10 +29,13 @@ class CartScreen extends StatelessWidget {
             title: const Text('Your cart'),
             actions: [
               if (!cart.isEmpty)
-                TextButton(
+                RoundIconButton(
+                  icon: Icons.delete_sweep_rounded,
+                  tooltip: 'Clear cart',
+                  style: RoundIconStyle.danger,
                   onPressed: () => _confirmClear(context),
-                  child: const Text('Clear cart'),
                 ),
+              const SizedBox(width: 4),
             ],
           ),
           body: state.isLoading
@@ -37,7 +43,7 @@ class CartScreen extends StatelessWidget {
               : cart.isEmpty
                   ? const _EmptyCart()
                   : _CartList(state: state),
-          bottomNavigationBar: cart.isEmpty ? null : _TotalBar(state: state),
+          bottomNavigationBar: cart.isEmpty ? null : _CheckoutBar(state: state),
         );
       },
     );
@@ -77,36 +83,149 @@ class _CartList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = state.cart;
-    final textTheme = Theme.of(context).textTheme;
+    final count = state.itemCount;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
         _RestaurantBanner(state: state),
-        // Tap the restaurant name to add more food from it.
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.storefront_outlined),
-          title: Text(
-            cart.restaurantName,
-            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          subtitle: const Text('Pickup order'),
-          trailing: const Icon(Icons.chevron_right),
+        _RestaurantCard(
+          name: cart.restaurantName,
+          // Opens the menu, to add more food from it.
           onTap: () =>
               context.push(AppRoutes.restaurantPage(cart.restaurantId)),
         ),
-        const Divider(),
-        for (final item in cart.items)
-          _CartItemRow(
-            item: item,
-            restaurantId: cart.restaurantId,
-            restaurantName: cart.restaurantName,
-            available: state.isDishAvailable(item.dishId),
-            restaurantClosed:
-                state.restaurantStatus == CartRestaurantStatus.closed,
+        const SizedBox(height: 12),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Column(
+              children: [
+                for (final item in cart.items)
+                  _CartItemRow(
+                    item: item,
+                    restaurantId: cart.restaurantId,
+                    restaurantName: cart.restaurantName,
+                    available: state.isDishAvailable(item.dishId),
+                    restaurantClosed:
+                        state.restaurantStatus == CartRestaurantStatus.closed,
+                  ),
+              ],
+            ),
           ),
+        ),
+        const SizedBox(height: 12),
+        SectionCard(
+          icon: Icons.receipt_long_rounded,
+          title: 'Order summary',
+          child: Column(
+            children: [
+              _SummaryLine(
+                label: '$count ${count == 1 ? 'item' : 'items'}',
+                value: formatPrice(state.total),
+              ),
+              const Divider(height: 20),
+              _SummaryLine(
+                label: 'Total',
+                value: formatPrice(state.total),
+                isTotal: true,
+              ),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _SummaryLine extends StatelessWidget {
+  const _SummaryLine({
+    required this.label,
+    required this.value,
+    this.isTotal = false,
+  });
+
+  final String label;
+  final String value;
+  final bool isTotal;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isTotal ? AppTheme.textDark : AppTheme.textMuted,
+              fontSize: isTotal ? 16 : 14,
+              fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: isTotal ? AppTheme.brandOrange : AppTheme.textMuted,
+            fontSize: isTotal ? 18 : 14,
+            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// The restaurant the cart is from. Tap it to add more food.
+class _RestaurantCard extends StatelessWidget {
+  const _RestaurantCard({required this.name, required this.onTap});
+
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const SectionIcon(icon: Icons.storefront_rounded, size: 40),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Pickup order',
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppTheme.textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -133,17 +252,22 @@ class _RestaurantBanner extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.dangerBg,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: Colors.grey.shade700),
+          const Icon(Icons.info_rounded, color: AppTheme.dangerRed),
           const SizedBox(width: 10),
-          Expanded(child: Text(message)),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: AppTheme.dangerRed),
+            ),
+          ),
         ],
       ),
     );
@@ -159,6 +283,11 @@ class _CartItemRow extends StatelessWidget {
     required this.restaurantClosed,
   });
 
+  static const double photoSize = 56;
+
+  // Makes the photo of a dish that cannot be ordered look faded.
+  static const Color fade = Color(0x99FFFFFF);
+
   final CartItem item;
   final String restaurantId;
   final String restaurantName;
@@ -171,8 +300,6 @@ class _CartItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     // The same stepper as on the menu, so the app has one stepper.
     final dish = Dish(
       id: item.dishId,
@@ -183,66 +310,71 @@ class _CartItemRow extends StatelessWidget {
       imageUrl: item.imageUrl,
     );
 
-    final details = Row(
-      children: [
-        FoodImage(
-          imageUrl: item.imageUrl,
-          width: 64,
-          height: 64,
-          iconSize: 28,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.name,
-                style: textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${formatPrice(item.price)} each',
-                style: textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                formatPrice(item.lineTotal),
-                style: textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  // A crossed-out price is not in the total.
-                  decoration: available ? null : TextDecoration.lineThrough,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-
     final faded = !available || restaurantClosed;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Expanded(
-            child: !faded
-                ? details
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Opacity(opacity: 0.4, child: details),
-                      if (!available) ...[
-                        const SizedBox(height: 6),
-                        const _NotAvailableLabel(),
-                      ],
-                    ],
+          // A layer, not Opacity, so the list stays smooth.
+          Stack(
+            children: [
+              FoodImage(
+                imageUrl: item.imageUrl,
+                width: photoSize,
+                height: photoSize,
+                borderRadius: 12,
+                iconSize: 24,
+              ),
+              if (faded)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: fade,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!available) ...[
+                  const _NotAvailableLabel(),
+                  const SizedBox(height: 4),
+                ],
+                Text(
+                  item.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: faded ? AppTheme.textMuted : AppTheme.textDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formatPrice(item.lineTotal),
+                  style: TextStyle(
+                    color: faded ? AppTheme.textMuted : AppTheme.brandOrange,
+                    fontWeight: FontWeight.w700,
+                    // A crossed-out price is not in the total.
+                    decoration: available ? null : TextDecoration.lineThrough,
+                  ),
+                ),
+                if (item.quantity > 1)
+                  Text(
+                    '${formatPrice(item.price)} each',
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
           ),
           if (!faded)
             AddToCartButton(
@@ -252,8 +384,8 @@ class _CartItemRow extends StatelessWidget {
             ),
           IconButton(
             tooltip: 'Remove',
-            icon: const Icon(Icons.delete_outline),
-            color: available ? Colors.grey.shade700 : Colors.red.shade700,
+            icon: const Icon(Icons.delete_rounded),
+            color: AppTheme.dangerRed,
             onPressed: () => _confirmRemove(context),
           ),
         ],
@@ -288,31 +420,45 @@ class _CartItemRow extends StatelessWidget {
   }
 }
 
+// "Not available now" in soft red, like on the menu.
 class _NotAvailableLabel extends StatelessWidget {
   const _NotAvailableLabel();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
       decoration: BoxDecoration(
-        color: Colors.grey.shade700,
+        color: AppTheme.dangerBg,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
-        'Not available now',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cancel_rounded, size: 14, color: AppTheme.dangerRed),
+          SizedBox(width: 3),
+          // Shrinks with "..." on a narrow row, so it never overflows.
+          Flexible(
+            child: Text(
+              'Not available now',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppTheme.dangerRed,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _TotalBar extends StatelessWidget {
-  const _TotalBar({required this.state});
+// The big orange Checkout button with the total in it.
+class _CheckoutBar extends StatelessWidget {
+  const _CheckoutBar({required this.state});
 
   final CartState state;
 
@@ -333,51 +479,51 @@ class _TotalBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final count = state.itemCount;
     final reason = _reason;
 
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+          border: Border(top: BorderSide(color: AppTheme.border)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Text(
-                  '$count ${count == 1 ? 'item' : 'items'}',
-                  style: textTheme.bodyMedium,
-                ),
-                const Spacer(),
-                Text(
-                  'Total  ${formatPrice(state.total)}',
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
             if (reason != null) ...[
-              const SizedBox(height: 8),
               Text(
                 reason,
                 textAlign: TextAlign.center,
-                style: textTheme.bodySmall?.copyWith(
-                  color: Colors.red.shade700,
+                style: const TextStyle(
+                  color: AppTheme.dangerRed,
+                  fontSize: 13,
                 ),
               ),
+              const SizedBox(height: 8),
             ],
-            const SizedBox(height: 12),
             FilledButton(
               onPressed: reason != null
                   ? null
                   : () => context.push(AppRoutes.checkout),
-              child: const Text('Checkout'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                // The word can shrink with "..."; the total always shows.
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Checkout',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(formatPrice(state.total)),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_rounded, size: 20),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -397,15 +543,28 @@ class _EmptyCart extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.shopping_bag_outlined,
-              size: 56,
-              color: Colors.grey.shade400,
+            Container(
+              width: 96,
+              height: 96,
+              decoration: const BoxDecoration(
+                color: AppTheme.softOrange,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.shopping_cart_rounded,
+                size: 48,
+                color: AppTheme.brandOrange,
+              ),
             ),
-            const SizedBox(height: 12),
-            const Text('Your cart is empty.'),
             const SizedBox(height: 16),
-            OutlinedButton(
+            const Text(
+              'Your cart is empty',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              // The app theme makes FilledButton full width, so we set a size.
+              style: FilledButton.styleFrom(minimumSize: const Size(200, 48)),
               onPressed: () => context.pop(),
               child: const Text('Browse restaurants'),
             ),
