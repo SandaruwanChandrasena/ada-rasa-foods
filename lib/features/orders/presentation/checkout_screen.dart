@@ -199,15 +199,13 @@ class _CheckoutViewState extends State<_CheckoutView> {
                       busy: checkout.isPlacing ||
                           payment.status != DemoPaymentStatus.idle,
                     ),
-                    if (stage != null && payingCard != null)
+                    if (covered)
                       Positioned.fill(
                         child: EnterAnimation(
                           duration: const Duration(milliseconds: 200),
                           child: CheckoutPaymentView(
-                            stage: stage,
-                            card: payingCard,
-                            amount: payment.amount,
-                            errorMessage: checkout.errorMessage,
+                            payment: payment,
+                            checkout: checkout,
                             onViewOrder: _openOrder,
                             onTryAgain: _tryAgain,
                             onTryAnotherCard: _tryAnotherCard,
