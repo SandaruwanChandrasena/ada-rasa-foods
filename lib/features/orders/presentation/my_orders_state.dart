@@ -27,15 +27,25 @@ class MyOrdersState extends Equatable {
   List<FoodOrder> get activeOrders =>
       orders.where((order) => !order.status.isEnd).toList();
 
-  // The newest rejected order the customer has not opened yet.
+  // A rejection older than this is old news, so no red banner.
+  static const rejectedNewsTime = Duration(hours: 24);
+
+  // Rejected in the last 24 hours, and not opened yet. Newest first.
+  List<FoodOrder> get unseenRejectedOrders {
+    final now = DateTime.now();
+    return orders.where((order) {
+      if (order.status != OrderStatus.rejected) return false;
+      if (seenIds.contains(order.id)) return false;
+      // Null while the server time is on its way, so it counts as new.
+      final at = order.updatedAt ?? order.placedAt;
+      return at == null || now.difference(at) < rejectedNewsTime;
+    }).toList();
+  }
+
+  // The order for the red home banner.
   FoodOrder? get unseenRejected {
-    for (final order in orders) {
-      if (order.status == OrderStatus.rejected &&
-          !seenIds.contains(order.id)) {
-        return order;
-      }
-    }
-    return null;
+    final list = unseenRejectedOrders;
+    return list.isEmpty ? null : list.first;
   }
 
   MyOrdersState copyWith({Set<String>? seenIds}) {

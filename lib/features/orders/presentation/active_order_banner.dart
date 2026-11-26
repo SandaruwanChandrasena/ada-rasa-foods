@@ -23,13 +23,13 @@ class ActiveOrderBanner extends StatelessWidget {
         final rejected = state.unseenRejected;
         if (rejected != null) {
           return _Banner(
-            icon: Icons.cancel_outlined,
+            icon: Icons.cancel_rounded,
             text: '${rejected.restaurantName} rejected your order. '
                 'Tap to see it.',
-            color: Colors.red.shade700,
-            background: Colors.red.shade50,
+            color: AppTheme.dangerRed,
+            background: AppTheme.dangerBg,
             onTap: () {
-              context.read<MyOrdersCubit>().markSeen(rejected);
+              context.read<MyOrdersCubit>().markAllRejectedSeen();
               context.push(AppRoutes.orderStatus(rejected.id));
             },
           );
@@ -41,7 +41,7 @@ class ActiveOrderBanner extends StatelessWidget {
         if (active.length == 1) {
           final order = active.single;
           return _Banner(
-            icon: Icons.receipt_long_outlined,
+            icon: Icons.receipt_long_rounded,
             text: '${order.restaurantName}: ${order.statusLabel}. '
                 'Tap to see your order.',
             color: AppTheme.brandOrange,
@@ -51,7 +51,7 @@ class ActiveOrderBanner extends StatelessWidget {
         }
 
         return _Banner(
-          icon: Icons.receipt_long_outlined,
+          icon: Icons.receipt_long_rounded,
           text: '${active.length} orders in progress. Tap to see them.',
           color: AppTheme.brandOrange,
           background: const Color(0xFFFFF1EA),

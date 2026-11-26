@@ -74,6 +74,19 @@ class MyOrdersCubit extends Cubit<MyOrdersState> {
     await _seenRepository.markSeen(userId, order.id);
   }
 
+  // The red banner: opening it clears every new rejection at once.
+  Future<void> markAllRejectedSeen() async {
+    final userId = _userId;
+    if (userId == null) return;
+    final ids = [for (final order in state.unseenRejectedOrders) order.id];
+    if (ids.isEmpty) return;
+
+    emit(state.copyWith(seenIds: {...state.seenIds, ...ids}));
+    for (final id in ids) {
+      await _seenRepository.markSeen(userId, id);
+    }
+  }
+
   @override
   Future<void> close() async {
     await _subscription?.cancel();

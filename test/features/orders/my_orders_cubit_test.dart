@@ -14,7 +14,7 @@ class MockOrderRepository extends Mock implements OrderRepository {}
 
 class MockSeenOrderRepository extends Mock implements SeenOrderRepository {}
 
-FoodOrder order(String id, OrderStatus status) {
+FoodOrder order(String id, OrderStatus status, {DateTime? updatedAt}) {
   return FoodOrder(
     id: id,
     customerId: 'u1',
@@ -27,6 +27,7 @@ FoodOrder order(String id, OrderStatus status) {
     paymentMethod: PaymentMethod.cash,
     paymentStatus: PaymentStatus.pending,
     status: status,
+    updatedAt: updatedAt,
   );
 }
 
@@ -138,6 +139,83 @@ void main() {
     await cubit.markSeen(rejected);
 
     verify(() => seen.markSeen('u1', 'o1')).called(1);
+  });
+
+  test('a rejection from the last 24 hours shows the red banner', () async {
+    final recent = order(
+      'o5',
+      OrderStatus.rejected,
+      updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
+    );
+    await startWith([recent]);
+
+    expect(cubit.state.unseenRejected, recent);
+  });
+
+  test('a rejection older than 24 hours never shows the banner', () async {
+    final old = order(
+      'o5',
+      OrderStatus.rejected,
+      updatedAt: DateTime.now().subtract(const Duration(days: 8)),
+    );
+    await startWith([old]);
+
+    expect(cubit.state.unseenRejected, isNull);
+    expect(cubit.state.unseenRejectedOrders, isEmpty);
+  });
+
+  test('only the new rejections are listed, newest first', () async {
+    final now = DateTime.now();
+    final newer = order(
+      'o7',
+      OrderStatus.rejected,
+      updatedAt: now.subtract(const Duration(hours: 1)),
+    );
+    final older = order(
+      'o6',
+      OrderStatus.rejected,
+      updatedAt: now.subtract(const Duration(hours: 5)),
+    );
+    final old = order(
+      'o5',
+      OrderStatus.rejected,
+      updatedAt: now.subtract(const Duration(days: 3)),
+    );
+    await startWith([newer, older, old, placed]);
+
+    expect(cubit.state.unseenRejectedOrders, [newer, older]);
+    expect(cubit.state.unseenRejected, newer);
+  });
+
+  test('markAllRejectedSeen clears every new rejection at once', () async {
+    final now = DateTime.now();
+    final first = order(
+      'o7',
+      OrderStatus.rejected,
+      updatedAt: now.subtract(const Duration(hours: 1)),
+    );
+    final second = order(
+      'o6',
+      OrderStatus.rejected,
+      updatedAt: now.subtract(const Duration(hours: 3)),
+    );
+    await startWith([first, second, placed]);
+
+    await cubit.markAllRejectedSeen();
+
+    expect(cubit.state.unseenRejected, isNull);
+    expect(cubit.state.seenIds, {'o7', 'o6'});
+    verify(() => seen.markSeen('u1', 'o7')).called(1);
+    verify(() => seen.markSeen('u1', 'o6')).called(1);
+  });
+
+  test('markAllRejectedSeen with nothing new saves nothing', () async {
+    await startWith([placed, completed]);
+
+    await cubit.markAllRejectedSeen();
+
+    expect(cubit.state.seenIds, isEmpty);
+    verifyNever(() => seen.markSeen(any(), any()));
   });
 
   test('a live change to rejected shows the red banner order', () async {
