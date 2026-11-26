@@ -3,22 +3,23 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/sign_out_button.dart';
+import '../../../core/widgets/owner_bottom_bar.dart';
 import '../../auth/presentation/auth_cubit.dart';
 import '../../menu/domain/dish.dart';
 import '../../menu/presentation/dish_form_screen.dart';
 import '../../menu/presentation/menu_manage_cubit.dart';
 import '../../menu/presentation/menu_manage_screen.dart';
+import '../../orders/presentation/restaurant_orders_cubit.dart';
 import '../../orders/presentation/restaurant_orders_screen.dart';
-import 'restaurant_photo_card.dart';
+import 'owner_profile_page.dart';
 
 // Opens the Add or Edit dish page.
 void openDishPage(BuildContext context, DishFormArgs args) {
   context.push(AppRoutes.dishForm, extra: args);
 }
 
-// The owner's two tabs: Orders and Menu, with a bottom bar.
-// Both tabs stay alive, so new order alerts work on the Menu tab too.
+// The owner's three tabs: Orders, Menu and Profile, with a bottom bar.
+// All tabs stay alive, so new order alerts work on every tab.
 class RestaurantShell extends StatefulWidget {
   const RestaurantShell({
     super.key,
@@ -35,33 +36,34 @@ class RestaurantShell extends StatefulWidget {
 }
 
 class _RestaurantShellState extends State<RestaurantShell> {
-  int _index = 0;
+  int _index = OwnerBottomBar.orders;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: [
-          RestaurantOrdersView(callPhone: widget.callPhone),
-          _MenuPage(openDish: widget.openDish),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Orders',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book),
-            label: 'Menu',
-          ),
-        ],
+    final hasNewOrder = context.select(
+      (RestaurantOrdersCubit cubit) => cubit.state.newOrders.isNotEmpty,
+    );
+
+    return PopScope(
+      // The phone back button goes to Orders first, then closes the app.
+      canPop: _index == OwnerBottomBar.orders,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) setState(() => _index = OwnerBottomBar.orders);
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _index,
+          children: [
+            RestaurantOrdersView(callPhone: widget.callPhone),
+            _MenuPage(openDish: widget.openDish),
+            const OwnerProfilePage(),
+          ],
+        ),
+        bottomNavigationBar: OwnerBottomBar(
+          currentIndex: _index,
+          onTap: (index) => setState(() => _index = index),
+          showOrdersDot: hasNewOrder,
+        ),
       ),
     );
   }
@@ -75,20 +77,10 @@ class _MenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Menu'),
-        actions: const [SignOutButton()],
-      ),
-      body: Column(
-        children: [
-          const RestaurantPhotoCard(),
-          Expanded(
-            child: MenuManageView(
-              onAdd: () => _open(context),
-              onEdit: (dish) => _open(context, dish: dish),
-            ),
-          ),
-        ],
+      appBar: AppBar(title: const Text('Menu')),
+      body: MenuManageView(
+        onAdd: () => _open(context),
+        onEdit: (dish) => _open(context, dish: dish),
       ),
     );
   }

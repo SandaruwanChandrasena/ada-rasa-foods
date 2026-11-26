@@ -6,6 +6,9 @@ import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/dish_form_screen.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/menu_manage_cubit.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/menu_manage_state.dart';
+import 'package:ada_rasa_foods/features/orders/domain/food_order.dart';
+import 'package:ada_rasa_foods/features/orders/domain/order_item.dart';
+import 'package:ada_rasa_foods/features/orders/domain/order_status.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_cubit.dart';
 import 'package:ada_rasa_foods/features/orders/presentation/restaurant_orders_state.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
@@ -61,6 +64,23 @@ const cheeseKottu = Dish(
 const emptyBoard = RestaurantOrdersState(
   view: BoardView.loaded,
   doneLoaded: true,
+);
+
+const placedOrder = FoodOrder(
+  id: 'abc123xyz',
+  customerId: 'u1',
+  customerName: 'Nimal',
+  customerPhone: '0712345678',
+  restaurantId: 'r1',
+  restaurantName: 'Kottu Corner',
+  restaurantAddress: 'Colombo',
+  items: [
+    OrderItem(dishId: 'd1', name: 'Cheese Kottu', price: 1500, quantity: 1),
+  ],
+  total: 1500,
+  paymentMethod: PaymentMethod.cash,
+  paymentStatus: PaymentStatus.pending,
+  status: OrderStatus.placed,
 );
 
 void main() {
@@ -119,7 +139,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // Only what is really on screen. The hidden tab stays in the tree.
+  // Only what is really on screen. The hidden tabs stay in the tree.
   Finder onScreen(String text) => find.text(text).hitTestable();
 
   Future<void> openTab(WidgetTester tester, String label) async {
@@ -132,23 +152,53 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the bottom bar has Orders and Menu', (tester) async {
+  Badge ordersBadge(WidgetTester tester) {
+    return tester.widget<Badge>(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.byType(Badge),
+      ),
+    );
+  }
+
+  int selectedTab(WidgetTester tester) {
+    return tester
+        .widget<NavigationBar>(find.byType(NavigationBar))
+        .selectedIndex;
+  }
+
+  testWidgets('the bottom bar has Orders, Menu and Profile', (tester) async {
     await show(tester);
 
     final bar = find.byType(NavigationBar);
-    expect(
-      find.descendant(of: bar, matching: find.text('Orders')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: bar, matching: find.text('Menu')),
-      findsOneWidget,
-    );
+    for (final label in ['Orders', 'Menu', 'Profile']) {
+      expect(
+        find.descendant(of: bar, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
+  });
+
+  testWidgets('the bottom bar uses rounded icons', (tester) async {
+    await show(tester);
+
+    final bar = find.byType(NavigationBar);
+    for (final icon in [
+      Icons.receipt_long_rounded,
+      Icons.restaurant_menu_rounded,
+      Icons.person_rounded,
+    ]) {
+      expect(
+        find.descendant(of: bar, matching: find.byIcon(icon)),
+        findsOneWidget,
+      );
+    }
   });
 
   testWidgets('Orders opens first', (tester) async {
     await show(tester);
 
+    expect(selectedTab(tester), 0);
     expect(onScreen('Kottu Corner'), findsOneWidget);
     expect(onScreen('No new orders.'), findsOneWidget);
     expect(onScreen('Cheese Kottu'), findsNothing);
@@ -164,23 +214,77 @@ void main() {
     expect(onScreen('No new orders.'), findsNothing);
   });
 
-  testWidgets('Menu shows the restaurant photo card', (tester) async {
+  testWidgets('Menu no longer has the photo card or Sign out',
+      (tester) async {
     await show(tester);
 
     await openTab(tester, 'Menu');
 
+    expect(onScreen('Restaurant photo'), findsNothing);
+    expect(find.byTooltip('Sign out').hitTestable(), findsNothing);
+  });
+
+  testWidgets('Profile shows the photo card and the Open card',
+      (tester) async {
+    await show(tester);
+
+    await openTab(tester, 'Profile');
+
     expect(onScreen('Restaurant photo'), findsOneWidget);
-    expect(onScreen('Choose photo'), findsOneWidget);
+    expect(onScreen('Open for orders'), findsOneWidget);
+    expect(onScreen('Cheese Kottu'), findsNothing);
   });
 
   testWidgets('Orders brings the board back', (tester) async {
     await show(tester);
-    await openTab(tester, 'Menu');
+    await openTab(tester, 'Profile');
 
     await openTab(tester, 'Orders');
 
     expect(onScreen('No new orders.'), findsOneWidget);
-    expect(onScreen('Cheese Kottu'), findsNothing);
+    expect(onScreen('Open for orders'), findsNothing);
+  });
+
+  testWidgets('no orange dot when no new order waits', (tester) async {
+    await show(tester);
+
+    expect(ordersBadge(tester).isLabelVisible, isFalse);
+  });
+
+  testWidgets('an orange dot shows while a new order waits',
+      (tester) async {
+    when(() => board.state).thenReturn(
+      const RestaurantOrdersState(
+        view: BoardView.loaded,
+        doneLoaded: true,
+        open: [placedOrder],
+      ),
+    );
+
+    await show(tester);
+
+    expect(ordersBadge(tester).isLabelVisible, isTrue);
+  });
+
+  testWidgets('phone back on Menu goes to Orders', (tester) async {
+    await show(tester);
+    await openTab(tester, 'Menu');
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(selectedTab(tester), 0);
+    expect(onScreen('No new orders.'), findsOneWidget);
+  });
+
+  testWidgets('phone back on Profile goes to Orders', (tester) async {
+    await show(tester);
+    await openTab(tester, 'Profile');
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(selectedTab(tester), 0);
   });
 
   testWidgets('Add dish opens the dish page with the categories',
@@ -207,7 +311,7 @@ void main() {
     expect(opened.single.dish, cheeseKottu);
   });
 
-  testWidgets('a new order alert shows on the Menu tab too',
+  testWidgets('a new order alert shows on the Profile tab too',
       (tester) async {
     whenListen(
       board,
@@ -225,20 +329,11 @@ void main() {
       initialState: emptyBoard,
     );
     await show(tester);
-    await openTab(tester, 'Menu');
+    await openTab(tester, 'Profile');
 
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     expect(find.text('New order #XYZ789'), findsOneWidget);
-  });
-
-  testWidgets('Sign out works on the Menu tab', (tester) async {
-    await show(tester);
-    await openTab(tester, 'Menu');
-
-    await tester.tap(find.byTooltip('Sign out').hitTestable());
-
-    verify(() => authCubit.signOut()).called(1);
   });
 }
