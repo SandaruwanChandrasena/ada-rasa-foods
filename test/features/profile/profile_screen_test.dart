@@ -1,4 +1,6 @@
 import 'package:ada_rasa_foods/core/router/app_router.dart';
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
+import 'package:ada_rasa_foods/core/widgets/section_card.dart';
 import 'package:ada_rasa_foods/features/auth/domain/app_user.dart';
 import 'package:ada_rasa_foods/features/auth/domain/auth_failure.dart';
 import 'package:ada_rasa_foods/features/auth/domain/auth_repository.dart';
@@ -53,7 +55,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder signOutButton() => find.widgetWithText(OutlinedButton, 'Sign out');
+  Finder signOutButton() => find
+      .ancestor(
+        of: find.text('Sign out'),
+        matching: find.byWidgetPredicate((widget) => widget is TextButton),
+      )
+      .first;
 
   Future<void> show(
     WidgetTester tester, {
@@ -246,5 +253,66 @@ void main() {
       find.text('No internet connection. Please try again.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('the details sit in a soft orange card', (tester) async {
+    await show(tester);
+
+    final card = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.text('nimal Perera'),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    expect((card.decoration! as BoxDecoration).color, AppTheme.softOrange);
+  });
+
+  testWidgets('the role is a white pill', (tester) async {
+    await show(tester);
+
+    final pill = tester.widget<Container>(
+      find
+          .ancestor(of: find.text('Customer'), matching: find.byType(Container))
+          .first,
+    );
+    expect((pill.decoration! as BoxDecoration).color, Colors.white);
+  });
+
+  testWidgets('each row has an orange icon square', (tester) async {
+    await show(tester);
+    // Edit, Change password, My orders, My cards, App settings.
+    expect(find.byType(SectionIcon, skipOffstage: false), findsNWidgets(5));
+
+    await show(tester, canChangePassword: false);
+    expect(find.byType(SectionIcon, skipOffstage: false), findsNWidgets(4));
+  });
+
+  testWidgets('Sign out is a soft red button', (tester) async {
+    await show(tester);
+    await scrollTo(tester, signOutButton());
+
+    final button = tester.widget<TextButton>(signOutButton());
+    expect(button.style!.backgroundColor?.resolve({}), AppTheme.dangerBg);
+    expect(button.style!.foregroundColor?.resolve({}), AppTheme.dangerRed);
+  });
+
+  testWidgets('a long name and email fit on a small phone', (tester) async {
+    await show(
+      tester,
+      user: const AppUser(
+        uid: 'u1',
+        name: 'Wijesinghe Mudiyanselage Sandaruwan Chandrasena',
+        email: 'a.very.long.email.address.for.testing@example.com',
+        role: UserRole.restaurant,
+      ),
+    );
+    tester.view.physicalSize = const Size(960, 2400);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Restaurant owner'), findsOneWidget);
+    expect(find.text('Phone not added'), findsOneWidget);
   });
 }

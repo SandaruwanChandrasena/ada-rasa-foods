@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/section_card.dart';
 import '../../auth/domain/app_user.dart';
 import '../../auth/domain/auth_repository.dart';
 import '../../auth/domain/phone_checks.dart';
@@ -53,49 +54,68 @@ class ProfileView extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                     children: [
                       _Header(user: user),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                       const _SectionTitle('Account'),
-                      _Row(
-                        icon: Icons.edit_outlined,
-                        title: 'Edit name and phone',
-                        onTap: () => context.push(AppRoutes.editProfile),
+                      _MenuCard(
+                        rows: [
+                          _Row(
+                            icon: Icons.edit_rounded,
+                            title: 'Edit name and phone',
+                            onTap: () => context.push(AppRoutes.editProfile),
+                          ),
+                          if (canChangePassword)
+                            _Row(
+                              icon: Icons.lock_reset_rounded,
+                              title: 'Change password',
+                              onTap: () => _confirmReset(context, user.email),
+                            ),
+                        ],
                       ),
-                      if (canChangePassword)
-                        _Row(
-                          icon: Icons.lock_reset_outlined,
-                          title: 'Change password',
-                          onTap: () => _confirmReset(context, user.email),
-                        ),
                       const SizedBox(height: 16),
                       const _SectionTitle('Orders and payment'),
-                      _Row(
-                        icon: Icons.receipt_long_outlined,
-                        title: 'My orders',
-                        // My orders is a tab, so switch to it.
-                        onTap: () => context.go(AppRoutes.myOrders),
-                      ),
-                      _Row(
-                        icon: Icons.credit_card_outlined,
-                        title: 'My cards',
-                        onTap: () => context.push(AppRoutes.myCards),
+                      _MenuCard(
+                        rows: [
+                          _Row(
+                            icon: Icons.receipt_long_rounded,
+                            title: 'My orders',
+                            // My orders is a tab, so switch to it.
+                            onTap: () => context.go(AppRoutes.myOrders),
+                          ),
+                          _Row(
+                            icon: Icons.credit_card_rounded,
+                            title: 'My cards',
+                            onTap: () => context.push(AppRoutes.myCards),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       const _SectionTitle('App'),
-                      _Row(
-                        icon: Icons.settings_outlined,
-                        title: 'App settings',
-                        subtitle: 'Animations, test cards, and About',
-                        onTap: () => context.push(AppRoutes.settings),
+                      _MenuCard(
+                        rows: [
+                          _Row(
+                            icon: Icons.settings_rounded,
+                            title: 'App settings',
+                            subtitle: 'Animations, test cards, and About',
+                            onTap: () => context.push(AppRoutes.settings),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 32),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red.shade700,
-                          side: BorderSide(color: Colors.red.shade200),
+                      const SizedBox(height: 28),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.dangerRed,
+                          backgroundColor: AppTheme.dangerBg,
                           minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         onPressed: () => _confirmSignOut(context),
-                        icon: const Icon(Icons.logout),
+                        icon: const Icon(Icons.logout_rounded),
                         label: const Text('Sign out'),
                       ),
                     ],
@@ -165,7 +185,7 @@ class ProfileView extends StatelessWidget {
             // The app theme makes FilledButton full width, so we set a size.
             style: FilledButton.styleFrom(
               minimumSize: const Size(88, 40),
-              backgroundColor: danger ? Colors.red.shade700 : null,
+              backgroundColor: danger ? AppTheme.dangerRed : null,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(yesText),
@@ -177,6 +197,7 @@ class ProfileView extends StatelessWidget {
   }
 }
 
+// Who you are, in a soft orange card at the top.
 class _Header extends StatelessWidget {
   const _Header({required this.user});
 
@@ -184,56 +205,79 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final grey = Colors.grey.shade600;
     final name = user.name.trim();
     final letter = name.isEmpty ? '?' : name[0].toUpperCase();
 
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 36,
-          backgroundColor: AppTheme.brandOrange,
-          child: Text(
-            letter,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.softOrange,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: AppTheme.brandOrange,
+            child: Text(
+              letter,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          name.isEmpty ? 'No name' : name,
-          textAlign: TextAlign.center,
-          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          user.email,
-          textAlign: TextAlign.center,
-          style: textTheme.bodyMedium?.copyWith(color: grey),
-        ),
-        const SizedBox(height: 6),
-        if (user.phone.isEmpty)
-          _Label(
-            text: 'Phone not added',
-            color: Colors.red.shade700,
-            background: Colors.red.shade50,
-          )
-        else
-          Text(
-            PhoneChecks.format(user.phone),
-            style: textTheme.bodyMedium?.copyWith(color: grey),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name.isEmpty ? 'No name' : name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textDark,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  user.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppTheme.deepOrange),
+                ),
+                if (user.phone.isNotEmpty)
+                  Text(
+                    PhoneChecks.format(user.phone),
+                    style: const TextStyle(color: AppTheme.deepOrange),
+                  ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _Label(
+                      text: _roleText(user.role),
+                      color: AppTheme.deepOrange,
+                      background: Colors.white,
+                    ),
+                    if (user.phone.isEmpty)
+                      const _Label(
+                        text: 'Phone not added',
+                        color: AppTheme.dangerRed,
+                        background: AppTheme.dangerBg,
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        const SizedBox(height: 10),
-        _Label(
-          text: _roleText(user.role),
-          color: AppTheme.brandOrange,
-          background: const Color(0xFFFFF1EA),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -255,13 +299,41 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w700,
-            ),
+        style: const TextStyle(
+          color: AppTheme.textMuted,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+// A white card that holds a group of rows, with thin lines between them.
+class _MenuCard extends StatelessWidget {
+  const _MenuCard({required this.rows});
+
+  final List<Widget> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppTheme.border),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 58),
+            rows[i],
+          ],
+        ],
       ),
     );
   }
@@ -282,13 +354,44 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: Icon(icon, color: AppTheme.brandOrange),
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: Icon(Icons.chevron_right, color: Colors.grey.shade500),
+    return InkWell(
       onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        child: Row(
+          children: [
+            SectionIcon(icon: icon),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppTheme.textDark,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppTheme.textMuted,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -254,11 +254,26 @@ void main() {
     expect(cardOpacity(), 1);
   });
 
+  // No saved cards here (the main setUp), so no note.
+  testWidgets('no "already saved" note when there are no saved cards',
+      (tester) async {
+    await openScreen(tester);
+
+    await tester.enterText(numberField, '4242424242424242');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Year'));
+    await pick(tester, 'Year', nextYear);
+    await pick(tester, 'Month', '02');
+
+    expect(find.text('You already saved this card'), findsNothing);
+  });
+
   group('"You already saved this card" note', () {
     const warning = 'You already saved this card';
 
-    // Opens the screen with one saved Visa ending 4242.
-    Future<void> openWithSavedVisa(WidgetTester tester) async {
+    // One saved Visa ending 4242. Swapped in setUp, never in a test body.
+    setUp(() async {
       await cubit.close();
       when(() => repository.watchCards(any())).thenAnswer(
         (_) => Stream.value([
@@ -273,8 +288,7 @@ void main() {
         ]),
       );
       cubit = CardsCubit(repository)..start('u1');
-      await openScreen(tester);
-    }
+    });
 
     Future<void> fillNumberAndExpiry(
       WidgetTester tester,
@@ -291,15 +305,14 @@ void main() {
 
     testWidgets('shows when the number and expiry match a saved card',
         (tester) async {
-      await openWithSavedVisa(tester);
+      await openScreen(tester);
 
       await tester.enterText(numberField, '4242424242424242');
+      FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
       // The expiry is not chosen yet, so no note.
       expect(find.text(warning), findsNothing);
 
-      FocusManager.instance.primaryFocus?.unfocus();
-      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Year'));
       await pick(tester, 'Year', nextYear);
       await pick(tester, 'Month', '02');
@@ -309,7 +322,7 @@ void main() {
     });
 
     testWidgets('no note for a different expiry', (tester) async {
-      await openWithSavedVisa(tester);
+      await openScreen(tester);
 
       await fillNumberAndExpiry(tester, '4242424242424242', '03');
 
@@ -318,21 +331,14 @@ void main() {
 
     testWidgets('the note goes away when the number changes',
         (tester) async {
-      await openWithSavedVisa(tester);
+      await openScreen(tester);
       await fillNumberAndExpiry(tester, '4242424242424242', '02');
       expect(find.text(warning), findsOneWidget);
 
       await tester.ensureVisible(numberField);
       await tester.enterText(numberField, '5555555555554444');
+      FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
-
-      expect(find.text(warning), findsNothing);
-    });
-
-    testWidgets('no note when there are no saved cards', (tester) async {
-      await openScreen(tester);
-
-      await fillNumberAndExpiry(tester, '4242424242424242', '02');
 
       expect(find.text(warning), findsNothing);
     });
