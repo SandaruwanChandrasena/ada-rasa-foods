@@ -3,10 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/fade_slide_in.dart';
+import '../../../core/widgets/round_icon_button.dart';
 import 'auth_cubit.dart';
 import 'auth_state.dart';
 import 'auth_header.dart';
+import 'google_sign_in_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -93,11 +96,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   children: [
                     AuthHeader(
                       imagePath: 'assets/images/burger.jpg',
-                      height: 240,
-                      // The back button pops in.
-                      topLeft: _enter(150, scaleFrom: 0.7, IconButton.filledTonal(
+                      // Short, so the title sits just under the photo.
+                      height: 180,
+                      // The round back button pops in.
+                      topLeft: _enter(150, scaleFrom: 0.7, RoundIconButton(
                         tooltip: 'Back to sign in',
-                        icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+                        icon: Icons.arrow_back_rounded,
                         onPressed: isLoading ? null : _goToSignIn,
                       )),
                       child: Column(
@@ -119,7 +123,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
@@ -132,7 +136,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             textInputAction: TextInputAction.next,
                             decoration: const InputDecoration(
                               labelText: 'Name',
-                              prefixIcon: Icon(Icons.person_outline),
+                              prefixIcon: Icon(
+                                Icons.person_rounded,
+                                color: AppTheme.brandOrange,
+                              ),
                             ),
                             validator: (value) =>
                                 (value == null || value.trim().isEmpty)
@@ -148,7 +155,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             textInputAction: TextInputAction.next,
                             decoration: const InputDecoration(
                               labelText: 'Email address',
-                              prefixIcon: Icon(Icons.email_outlined),
+                              prefixIcon: Icon(
+                                Icons.email_rounded,
+                                color: AppTheme.brandOrange,
+                              ),
                             ),
                             validator: (value) {
                               final email = value?.trim() ?? '';
@@ -167,14 +177,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             textInputAction: TextInputAction.next,
                             decoration: InputDecoration(
                               labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(
+                                Icons.lock_rounded,
+                                color: AppTheme.brandOrange,
+                              ),
                               suffixIcon: IconButton(
                                 tooltip:
                                     _hidePassword ? 'Show password' : 'Hide password',
                                 icon: Icon(
                                   _hidePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
+                                      ? Icons.visibility_rounded
+                                      : Icons.visibility_off_rounded,
                                 ),
                                 onPressed: () =>
                                     setState(() => _hidePassword = !_hidePassword),
@@ -193,14 +206,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             onFieldSubmitted: (_) => _submit(),
                             decoration: InputDecoration(
                               labelText: 'Confirm password',
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(
+                                Icons.lock_rounded,
+                                color: AppTheme.brandOrange,
+                              ),
                               suffixIcon: IconButton(
                                 tooltip:
                                     _hideConfirm ? 'Show password' : 'Hide password',
                                 icon: Icon(
                                   _hideConfirm
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
+                                      ? Icons.visibility_rounded
+                                      : Icons.visibility_off_rounded,
                                 ),
                                 onPressed: () =>
                                     setState(() => _hideConfirm = !_hideConfirm),
@@ -223,15 +239,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 : const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text('Create Account'),
+                                      Flexible(
+                                        child: Text(
+                                          'Create Account',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                       SizedBox(width: 8),
-                                      Icon(Icons.arrow_forward, size: 20),
+                                      Icon(Icons.arrow_forward_rounded, size: 20),
                                     ],
                                   ),
                           )),
+                          const SizedBox(height: 24),
+                          _enter(700, Row(
+                            children: [
+                              const Expanded(child: Divider()),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  'Or continue with',
+                                  style:
+                                      TextStyle(color: colors.onSurfaceVariant),
+                                ),
+                              ),
+                              const Expanded(child: Divider()),
+                            ],
+                          )),
+                          const SizedBox(height: 24),
+                          // Google makes the account if it is new.
+                          _enter(760, GoogleSignInButton(
+                            onPressed: isLoading
+                                ? null
+                                : () =>
+                                    context.read<AuthCubit>().signInWithGoogle(),
+                          )),
                           const SizedBox(height: 16),
-                          _enter(710, Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          // Wraps to 2 lines on big phone fonts.
+                          _enter(820, Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               const Text('Already have an account?'),
                               TextButton(

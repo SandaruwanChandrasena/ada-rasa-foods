@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import 'auth_cubit.dart';
 import 'auth_state.dart';
@@ -135,7 +136,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             textInputAction: TextInputAction.next,
                             decoration: const InputDecoration(
                               labelText: 'Email address',
-                              prefixIcon: Icon(Icons.email_outlined),
+                              prefixIcon: Icon(
+                                Icons.email_rounded,
+                                color: AppTheme.brandOrange,
+                              ),
                             ),
                             validator: (value) {
                               final email = value?.trim() ?? '';
@@ -158,15 +162,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             onFieldSubmitted: (_) => _submit(),
                             decoration: InputDecoration(
                               labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(
+                                Icons.lock_rounded,
+                                color: AppTheme.brandOrange,
+                              ),
                               suffixIcon: IconButton(
                                 tooltip: _hidePassword
                                     ? 'Show password'
                                     : 'Hide password',
                                 icon: Icon(
                                   _hidePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
+                                      ? Icons.visibility_rounded
+                                      : Icons.visibility_off_rounded,
                                 ),
                                 onPressed: () => setState(
                                   () => _hidePassword = !_hidePassword,
@@ -204,9 +211,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text('Sign In'),
+                                      Flexible(
+                                        child: Text(
+                                          'Sign In',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                       SizedBox(width: 8),
-                                      Icon(Icons.arrow_forward, size: 20),
+                                      Icon(Icons.arrow_forward_rounded, size: 20),
                                     ],
                                   ),
                           )),
@@ -234,8 +247,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     context.read<AuthCubit>().signInWithGoogle(),
                           )),
                           const SizedBox(height: 24),
-                          _enter(760, Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          // Wraps to 2 lines on big phone fonts.
+                          _enter(760, Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               const Text("Don't have an account?"),
                               TextButton(

@@ -46,7 +46,10 @@ class GoogleSignInButton extends StatelessWidget {
           children: [
             SvgPicture.string(_googleLogoSvg, width: 20, height: 20),
             const SizedBox(width: 10),
-            Text(label),
+            // Big phone fonts: the label shrinks with "...", never overflows.
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
       ),
