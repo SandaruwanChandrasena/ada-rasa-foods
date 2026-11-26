@@ -11,12 +11,16 @@ class AuthHeader extends StatelessWidget {
     required this.child,
     this.topLeft,
     this.height = 280,
+    this.photoHeight,
   });
 
   final String imagePath;
   final Widget child;
   final Widget? topLeft;
   final double height;
+
+  // The photo can be taller than the header, so it sits behind the title.
+  final double? photoHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -27,12 +31,13 @@ class AuthHeader extends StatelessWidget {
     return SizedBox(
       height: height,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Positioned(
             top: 0,
             right: 0,
             width: photoWidth,
-            height: height * 0.85,
+            height: photoHeight ?? height * 0.85,
             // The photo fades in and slowly zooms out a little.
             child: FadeSlideIn(
               duration: const Duration(milliseconds: 900),

@@ -88,7 +88,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: SingleChildScrollView(
               // Swipe the page down to close the keyboard.
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.only(bottom: 16),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -96,8 +96,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   children: [
                     AuthHeader(
                       imagePath: 'assets/images/burger.jpg',
-                      // Short, so the title sits just under the photo.
-                      height: 180,
+                      // Photo as big as sign in (255), behind the title.
+                      height: 230,
+                      photoHeight: 255,
                       // The round back button pops in.
                       topLeft: _enter(150, scaleFrom: 0.7, RoundIconButton(
                         tooltip: 'Back to sign in',
@@ -123,7 +124,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
@@ -227,7 +228,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ? 'Passwords do not match.'
                                 : null,
                           )),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
                           _enter(640, FilledButton(
                             onPressed: isLoading ? null : _submit,
                             child: isLoading
@@ -251,7 +252,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     ],
                                   ),
                           )),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           _enter(700, Row(
                             children: [
                               const Expanded(child: Divider()),
@@ -267,7 +268,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               const Expanded(child: Divider()),
                             ],
                           )),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           // Google makes the account if it is new.
                           _enter(760, GoogleSignInButton(
                             onPressed: isLoading
@@ -275,7 +276,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 : () =>
                                     context.read<AuthCubit>().signInWithGoogle(),
                           )),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           // Wraps to 2 lines on big phone fonts.
                           _enter(820, Wrap(
                             alignment: WrapAlignment.center,

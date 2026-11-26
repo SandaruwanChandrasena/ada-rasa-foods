@@ -89,12 +89,13 @@ void main() {
     expect(find.text('Continue with Google'), findsOneWidget);
   });
 
-  testWidgets('the header is short, so the title sits under the photo',
+  testWidgets('the photo is as big as on sign in, behind the title',
       (tester) async {
     await show(tester);
 
     final header = tester.widget<AuthHeader>(find.byType(AuthHeader));
-    expect(header.height, 180);
+    expect(header.photoHeight, 255);
+    expect(header.height, 230);
   });
 
   testWidgets('the box icons are rounded and orange', (tester) async {
