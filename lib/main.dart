@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/status_strip.dart';
 import 'features/auth/domain/user_role.dart';
 import 'features/auth/presentation/auth_cubit.dart';
 import 'features/auth/presentation/auth_state.dart';
@@ -86,11 +87,13 @@ class AdaRasaApp extends StatelessWidget {
           theme: AppTheme.light(),
           scaffoldMessengerKey: _messengerKey,
           routerConfig: sl<GoRouter>(),
-          // Icon sizes follow the phone width, and the in-app
-          // "Reduce animations" switch works on every screen.
+          // Icon sizes follow the phone width, the status bar is orange,
+          // and the in-app "Reduce animations" switch works everywhere.
           builder: (context, child) => AppThemeByWidth(
-            child: ReduceAnimationsScope(
-              child: child ?? const SizedBox.shrink(),
+            child: StatusStrip(
+              child: ReduceAnimationsScope(
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
         ),

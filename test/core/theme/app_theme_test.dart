@@ -63,6 +63,16 @@ void main() {
       expect(theme.scaffoldBackgroundColor, Colors.white);
     });
 
+    test('top bars ask for white status bar icons, for the orange strip',
+        () {
+      final style = theme.appBarTheme.systemOverlayStyle;
+
+      expect(style, AppTheme.statusBarStyle);
+      expect(style?.statusBarIconBrightness, Brightness.light);
+      expect(style?.statusBarColor, Colors.transparent);
+      expect(AppTheme.statusBarColor, AppTheme.brandOrange);
+    });
+
     test('the top bar is white, flat, with a centred title', () {
       final bar = theme.appBarTheme;
 

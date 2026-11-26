@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../widgets/round_icon_button.dart';
@@ -19,6 +20,14 @@ class AppTheme {
   static const Color successBg = Color(0xFFE6F6EC);
   static const Color dangerRed = Color(0xFFA32D2D);
   static const Color dangerBg = Color(0xFFFDE8E8);
+
+  // The phone's status bar: orange with white icons on every page.
+  static const Color statusBarColor = brandOrange;
+  static const SystemUiOverlayStyle statusBarStyle = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+  );
 
   static ThemeData light({AppIconSizes iconSizes = AppIconSizes.normal}) {
     // fromSeed alone makes a darker orange, so we set primary ourselves.
@@ -59,6 +68,8 @@ class AppTheme {
         ),
         iconTheme: barIcons,
         actionsIconTheme: barIcons,
+        // A white bar would ask for dark icons; the strip is orange.
+        systemOverlayStyle: statusBarStyle,
       ),
       // Every back button in the app is a soft round button.
       actionIconTheme: ActionIconThemeData(
