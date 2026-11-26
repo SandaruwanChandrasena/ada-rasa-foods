@@ -141,7 +141,10 @@ class _EditProfileViewState extends State<EditProfileView> {
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Name',
-                        prefixIcon: Icon(Icons.person_outline),
+                        prefixIcon: Icon(
+                          Icons.person_rounded,
+                          color: AppTheme.brandOrange,
+                        ),
                       ),
                       validator: (value) =>
                           (value == null || value.trim().isEmpty)
@@ -170,7 +173,10 @@ class _EditProfileViewState extends State<EditProfileView> {
                         hintText: '071 234 5678',
                         helperText: 'The restaurant may call you about '
                             'your order.',
-                        prefixIcon: Icon(Icons.phone_outlined),
+                        prefixIcon: Icon(
+                          Icons.phone_rounded,
+                          color: AppTheme.brandOrange,
+                        ),
                       ),
                       validator: (value) => PhoneChecks.error(value ?? ''),
                     ),
@@ -181,7 +187,11 @@ class _EditProfileViewState extends State<EditProfileView> {
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         helperText: 'Your email cannot be changed.',
-                        prefixIcon: Icon(Icons.email_outlined),
+                        // Grey, because the email can't be changed.
+                        prefixIcon: Icon(
+                          Icons.email_rounded,
+                          color: AppTheme.textMuted,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -219,14 +229,22 @@ class _InfoBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1EA),
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.softOrange,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          const Icon(Icons.phone_in_talk_outlined, color: AppTheme.brandOrange),
+          const Icon(Icons.phone_in_talk_rounded, color: AppTheme.brandOrange),
           const SizedBox(width: 10),
-          Expanded(child: Text(message)),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppTheme.deepOrange,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );

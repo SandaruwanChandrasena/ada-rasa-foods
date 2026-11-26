@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/features/auth/domain/app_user.dart';
 import 'package:ada_rasa_foods/features/auth/domain/auth_failure.dart';
 import 'package:ada_rasa_foods/features/auth/domain/auth_repository.dart';
@@ -282,5 +283,33 @@ void main() {
       find.textContaining('so the restaurant can call you'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('the name and phone icons are rounded and orange',
+      (tester) async {
+    await open(tester);
+
+    final person = tester.widget<Icon>(find.byIcon(Icons.person_rounded));
+    final phone = tester.widget<Icon>(find.byIcon(Icons.phone_rounded));
+    final email = tester.widget<Icon>(find.byIcon(Icons.email_rounded));
+
+    expect(person.color, AppTheme.brandOrange);
+    expect(phone.color, AppTheme.brandOrange);
+    expect(email.color, AppTheme.textMuted);
+  });
+
+  testWidgets('from checkout, the phone note is soft orange',
+      (tester) async {
+    await open(tester, user: noPhone, forCheckout: true);
+
+    final box = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.phone_in_talk_rounded),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    expect((box.decoration! as BoxDecoration).color, AppTheme.softOrange);
   });
 }
