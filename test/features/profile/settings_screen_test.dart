@@ -1,3 +1,6 @@
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
+import 'package:ada_rasa_foods/core/widgets/section_card.dart';
+import 'package:ada_rasa_foods/features/payments/presentation/mini_card.dart';
 import 'package:ada_rasa_foods/features/profile/domain/settings_repository.dart';
 import 'package:ada_rasa_foods/features/profile/presentation/reduce_animations_cubit.dart';
 import 'package:ada_rasa_foods/features/profile/presentation/settings_screen.dart';
@@ -162,6 +165,50 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(LicensePage), findsOneWidget);
+    });
+
+    testWidgets('Reduce animations has an orange icon square',
+        (tester) async {
+      await show(tester);
+
+      expect(
+        find.ancestor(
+          of: find.byType(SectionIcon),
+          matching: find.byType(SwitchListTile),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('each test card has a mini card picture', (tester) async {
+      await show(tester);
+
+      expect(find.byType(MiniCard, skipOffstage: false), findsNWidgets(5));
+      expect(find.text('•••• 4242', skipOffstage: false), findsOneWidget);
+      expect(find.text('•••• 4444', skipOffstage: false), findsOneWidget);
+    });
+
+    testWidgets('the card that fails has a red note', (tester) async {
+      await show(tester);
+      await scrollTo(tester, find.text('Visa, always fails'));
+
+      final note = tester.widget<Text>(find.text('Visa, always fails'));
+      expect(note.style?.color, AppTheme.dangerRed);
+    });
+
+    testWidgets('the licences button is soft orange', (tester) async {
+      await show(tester);
+      await scrollTo(tester, find.text('Open source licences'));
+
+      final button = tester.widget<TextButton>(
+        find
+            .ancestor(
+              of: find.text('Open source licences'),
+              matching: find.byWidgetPredicate((w) => w is TextButton),
+            )
+            .first,
+      );
+      expect(button.style!.backgroundColor?.resolve({}), AppTheme.softOrange);
     });
   });
 

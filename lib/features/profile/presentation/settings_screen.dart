@@ -3,6 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/section_card.dart';
+import '../../payments/domain/card_brand.dart';
+import '../../payments/domain/card_checks.dart';
+import '../../payments/domain/payment_card.dart';
+import '../../payments/presentation/mini_card.dart';
 import 'reduce_animations_cubit.dart';
 
 // Keep in step with "version" in pubspec.yaml.
@@ -35,6 +40,15 @@ class _TestCard {
 
   final String number;
   final String note;
+
+  // Only for the mini card picture. It is never saved.
+  PaymentCard get asPaymentCard => PaymentCard(
+        brand: CardChecks.brandOf(number) ?? CardBrand.visa,
+        last4: CardChecks.last4Of(number),
+        holderName: '',
+        expMonth: 1,
+        expYear: 2030,
+      );
 }
 
 const _testCards = [
@@ -57,40 +71,120 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           const _SectionTitle('Display'),
-          BlocBuilder<ReduceAnimationsCubit, bool>(
-            builder: (context, reduce) => SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-              secondary: const Icon(Icons.motion_photos_off_outlined),
-              title: const Text('Reduce animations'),
-              subtitle: const Text('Turns off most moving effects.'),
-              value: reduce,
-              onChanged: context.read<ReduceAnimationsCubit>().set,
+          _SettingsCard(
+            child: BlocBuilder<ReduceAnimationsCubit, bool>(
+              builder: (context, reduce) => SwitchListTile(
+                contentPadding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
+                secondary: const SectionIcon(
+                  icon: Icons.motion_photos_off_rounded,
+                ),
+                title: const Text(
+                  'Reduce animations',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text('Turns off most moving effects.'),
+                value: reduce,
+                onChanged: context.read<ReduceAnimationsCubit>().set,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           const _SectionTitle('Test cards (demo)'),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
-            child: Text(
-              'Tap a number to copy it. Use any name, a future date, '
-              'and any 3-digit CVV.',
-              style: TextStyle(color: Colors.grey.shade600),
+          _SettingsCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(14, 12, 14, 4),
+                  child: Text(
+                    'Tap a number to copy it. Use any name, a future date, '
+                    'and any 3-digit CVV.',
+                    style: TextStyle(color: AppTheme.textMuted),
+                  ),
+                ),
+                for (final card in _testCards) _TestCardRow(card: card),
+                const SizedBox(height: 6),
+              ],
             ),
           ),
-          for (final card in _testCards) _TestCardRow(card: card),
           const SizedBox(height: 16),
           const _SectionTitle('Notifications'),
-          const ListTile(
-            enabled: false,
-            contentPadding: EdgeInsets.symmetric(horizontal: 4),
-            leading: Icon(Icons.notifications_none_outlined),
-            title: Text('Order notifications'),
-            subtitle: Text('Coming soon'),
+          const _SettingsCard(
+            child: ListTile(
+              enabled: false,
+              contentPadding: EdgeInsets.fromLTRB(14, 4, 14, 4),
+              leading: _SoftIcon(icon: Icons.notifications_rounded),
+              title: Text('Order notifications'),
+              trailing: _ComingSoon(),
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           const _SectionTitle('About'),
-          const _AboutPart(),
+          const _SettingsCard(child: _AboutPart()),
         ],
+      ),
+    );
+  }
+}
+
+// A white card with a thin border that holds one part of the page.
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppTheme.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+// A soft orange icon square, for a part that is not ready yet.
+class _SoftIcon extends StatelessWidget {
+  const _SoftIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: AppTheme.softOrange,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Icon(icon, color: AppTheme.brandOrange, size: 18),
+    );
+  }
+}
+
+class _ComingSoon extends StatelessWidget {
+  const _ComingSoon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F1F1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Coming soon',
+        style: TextStyle(
+          color: AppTheme.textMuted,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -116,13 +210,12 @@ class _TestCardRow extends StatelessWidget {
     final fails = card.number.endsWith('0002');
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: Icon(
-        Icons.credit_card,
-        color: fails ? Colors.grey.shade500 : AppTheme.brandOrange,
-      ),
+      contentPadding: const EdgeInsets.fromLTRB(14, 2, 8, 2),
+      leading: MiniCard(card: card.asPaymentCard),
       title: Text(
         card.number,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           fontFamily: 'monospace',
           fontWeight: FontWeight.w600,
@@ -131,10 +224,14 @@ class _TestCardRow extends StatelessWidget {
       subtitle: Text(
         card.note,
         style: TextStyle(
-          color: fails ? Colors.red.shade700 : Colors.grey.shade600,
+          color: fails ? AppTheme.dangerRed : AppTheme.textMuted,
         ),
       ),
-      trailing: const Icon(Icons.copy_rounded, size: 20),
+      trailing: const Icon(
+        Icons.copy_rounded,
+        size: 20,
+        color: AppTheme.brandOrange,
+      ),
       onTap: () => _copy(context),
     );
   }
@@ -146,48 +243,56 @@ class _AboutPart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final grey = Colors.grey.shade600;
+    const grey = AppTheme.textMuted;
     final logo = Image.asset('assets/images/logo.png', height: 64);
 
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        logo,
-        const SizedBox(height: 8),
-        Text(
-          'Ada Rasa',
-          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        Text(
-          'Version $appVersion',
-          style: textTheme.bodyMedium?.copyWith(color: grey),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'A food delivery app prototype. Demo only, no real payments.',
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Built with Flutter and Firebase.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: grey),
-        ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () => showLicensePage(
-            context: context,
-            applicationName: 'Ada Rasa',
-            applicationVersion: appVersion,
-            applicationIcon: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Image.asset('assets/images/logo.png', height: 48),
-            ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: Column(
+        children: [
+          logo,
+          const SizedBox(height: 8),
+          Text(
+            'Ada Rasa',
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
-          icon: const Icon(Icons.description_outlined),
-          label: const Text('Open source licences'),
-        ),
-      ],
+          Text(
+            'Version $appVersion',
+            style: textTheme.bodyMedium?.copyWith(color: grey),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'A food delivery app prototype. Demo only, no real payments.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Built with Flutter and Firebase.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: grey),
+          ),
+          const SizedBox(height: 16),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.deepOrange,
+              backgroundColor: AppTheme.softOrange,
+              shape: const StadiumBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            onPressed: () => showLicensePage(
+              context: context,
+              applicationName: 'Ada Rasa',
+              applicationVersion: appVersion,
+              applicationIcon: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Image.asset('assets/images/logo.png', height: 48),
+              ),
+            ),
+            icon: const Icon(Icons.description_rounded),
+            label: const Text('Open source licences'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -200,13 +305,14 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w700,
-            ),
+        style: const TextStyle(
+          color: AppTheme.textMuted,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
