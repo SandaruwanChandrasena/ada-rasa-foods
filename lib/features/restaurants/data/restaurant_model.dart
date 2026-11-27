@@ -20,6 +20,8 @@ class RestaurantModel {
       latitude: location is GeoPoint ? location.latitude : 0.0,
       longitude: location is GeoPoint ? location.longitude : 0.0,
       imageUrl: map['imageUrl'] as String? ?? '',
+      phone: map['phone'] as String? ?? '',
+      description: map['description'] as String? ?? '',
       isOpen: map['isOpen'] as bool? ?? false,
       isActive: map['isActive'] as bool? ?? false,
       createdAt: createdAt is Timestamp ? createdAt.toDate() : null,

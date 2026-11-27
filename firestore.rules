@@ -24,16 +24,32 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
     }
 
+    // phone and description are new (27 Nov), so old shops may not have them.
     function isValidRestaurant(data) {
-      return data.keys().hasOnly(['name', 'cuisine', 'ownerId', 'imageUrl', 'address', 'location', 'isOpen', 'isActive', 'createdAt'])
+      return data.keys().hasOnly(['name', 'cuisine', 'ownerId', 'imageUrl', 'address', 'location', 'isOpen', 'isActive', 'createdAt', 'phone', 'description'])
         && data.name is string && data.name.size() > 0
         && data.cuisine is string
+        && data.get('phone', '') is string
+        && data.get('description', '') is string
         && data.ownerId is string && data.ownerId.size() > 0
         && data.imageUrl is string
         && data.address is string
         && data.location is latlng
         && data.isOpen is bool
         && data.isActive is bool;
+    }
+
+    // Checks only the shop details the owner changed, so old shops with
+    // long names can still open and close.
+    function isValidOwnerDetails(newData, oldData) {
+      let changed = newData.diff(oldData).affectedKeys();
+      return (!changed.hasAny(['name']) || newData.name.size() <= 40)
+        && (!changed.hasAny(['cuisine'])
+          || (newData.cuisine.size() > 0 && newData.cuisine.size() <= 20))
+        && (!changed.hasAny(['phone'])
+          || newData.phone == '' || newData.phone.matches('07[0-9]{8}'))
+        && (!changed.hasAny(['description'])
+          || newData.description.size() <= 150);
     }
 
     // Order fields saved at checkout (CUS-4). Stage 2 adds delivery fields.
@@ -191,12 +207,14 @@ service cloud.firestore {
         && isValidRestaurant(request.resource.data)
         && request.resource.data.createdAt == request.time;
 
-      // Admin can change everything except createdAt. The owner can change only isOpen and imageUrl.
+      // Admin can change everything except createdAt. The owner can change
+      // isOpen, imageUrl and the shop details, but not the address or map point.
       allow update: if isValidRestaurant(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt
         && (isAdmin()
           || (isRestaurantOwner(restaurantId)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOpen', 'imageUrl'])));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOpen', 'imageUrl', 'name', 'cuisine', 'phone', 'description'])
+            && isValidOwnerDetails(request.resource.data, resource.data)));
 
       // Turn a restaurant off with isActive instead (ADM-3).
       allow delete: if false;

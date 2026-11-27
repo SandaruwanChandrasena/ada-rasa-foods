@@ -106,6 +106,31 @@ void main() {
       expect(restaurant, isNull);
     });
 
+    test('reads the phone and description', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      await firestore.collection('restaurants').doc('r1').update({
+        'phone': '0712345678',
+        'description': 'Best kottu in town.',
+      });
+
+      final restaurant = await repository.watchRestaurant('r1').first;
+
+      expect(restaurant!.phone, '0712345678');
+      expect(restaurant.hasPhone, isTrue);
+      expect(restaurant.description, 'Best kottu in town.');
+    });
+
+    test('an old shop with no phone or description reads as empty',
+        () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+
+      final restaurant = await repository.watchRestaurant('r1').first;
+
+      expect(restaurant!.phone, '');
+      expect(restaurant.hasPhone, isFalse);
+      expect(restaurant.description, '');
+    });
+
     test('missing fields get safe defaults: closed and hidden', () async {
       await firestore.collection('restaurants').doc('r1').set({
         'name': 'Half Data Cafe',
@@ -274,6 +299,28 @@ void main() {
 
     test('hasImage is false when imageUrl is empty', () {
       expect(openRestaurant.hasImage, isFalse);
+    });
+
+    test('a new Restaurant has no phone and no description', () {
+      expect(openRestaurant.phone, '');
+      expect(openRestaurant.hasPhone, isFalse);
+      expect(openRestaurant.description, '');
+    });
+
+    test('a different phone makes a different Restaurant', () {
+      const withPhone = Restaurant(
+        id: 'r1',
+        name: 'Kottu Corner',
+        cuisine: 'Sri Lankan',
+        ownerId: 'owner_1',
+        address: 'Colombo',
+        latitude: 6.9,
+        longitude: 79.8,
+        phone: '0712345678',
+      );
+
+      expect(withPhone == openRestaurant, isFalse);
+      expect(withPhone.hasPhone, isTrue);
     });
   });
 }

@@ -10,6 +10,8 @@ class Restaurant extends Equatable {
     required this.latitude,
     required this.longitude,
     this.imageUrl = '',
+    this.phone = '',
+    this.description = '',
     this.isOpen = true,
     this.isActive = true,
     this.createdAt,
@@ -28,6 +30,11 @@ class Restaurant extends Equatable {
   // Empty means the app shows the default image.
   final String imageUrl;
 
+  // The owner sets these. Phone is digits only, like 0712345678.
+  // Empty means none, so old shops without them still work.
+  final String phone;
+  final String description;
+
   // The owner sets isOpen (RES-4). The admin sets isActive (ADM-3).
   final bool isOpen;
   final bool isActive;
@@ -35,6 +42,8 @@ class Restaurant extends Equatable {
   final DateTime? createdAt;
 
   bool get hasImage => imageUrl.isNotEmpty;
+
+  bool get hasPhone => phone.isNotEmpty;
 
   // Closed or turned-off restaurants take no orders.
   bool get canTakeOrders => isOpen && isActive;
@@ -49,6 +58,8 @@ class Restaurant extends Equatable {
         latitude,
         longitude,
         imageUrl,
+        phone,
+        description,
         isOpen,
         isActive,
         createdAt,
