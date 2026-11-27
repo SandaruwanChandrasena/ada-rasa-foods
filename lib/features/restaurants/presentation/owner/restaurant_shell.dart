@@ -76,12 +76,10 @@ class _MenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Menu')),
-      body: MenuManageView(
-        onAdd: () => _open(context),
-        onEdit: (dish) => _open(context, dish: dish),
-      ),
+    // MenuManageView has its own top bar with the Add dish pill.
+    return MenuManageView(
+      onAdd: () => _open(context),
+      onEdit: (dish) => _open(context, dish: dish),
     );
   }
 

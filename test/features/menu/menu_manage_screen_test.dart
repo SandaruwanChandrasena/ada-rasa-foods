@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/menu_manage_cubit.dart';
 import 'package:ada_rasa_foods/features/menu/presentation/menu_manage_screen.dart';
@@ -108,9 +111,11 @@ void main() {
   testWidgets('an empty menu invites the first dish', (tester) async {
     await show(tester, loaded(const []));
 
+    expect(find.text('No dishes yet'), findsOneWidget);
+    expect(find.text('Add your first dish to the menu.'), findsOneWidget);
+
     await tester.tap(find.text('Add your first dish'));
 
-    expect(find.text('No dishes yet.'), findsOneWidget);
     expect(addTaps, 1);
   });
 
@@ -130,12 +135,30 @@ void main() {
     expect(find.text('Rs. 1,200'), findsNWidgets(2));
   });
 
-  testWidgets('Add dish calls onAdd', (tester) async {
+  testWidgets('the orange Add dish pill calls onAdd', (tester) async {
     await show(tester, loaded([dish('d1')]));
+
+    final pill = find.byKey(const Key('add-dish-pill'));
+    expect(tester.widget<Material>(pill).color, AppTheme.brandOrange);
 
     await tester.tap(find.text('Add dish'));
 
     expect(addTaps, 1);
+  });
+
+  testWidgets('there is no floating Add button any more', (tester) async {
+    await show(tester, loaded([dish('d1')]));
+
+    expect(find.byType(FloatingActionButton), findsNothing);
+  });
+
+  testWidgets('the pencil opens the dish for editing', (tester) async {
+    final kottu = dish('d1');
+    await show(tester, loaded([kottu]));
+
+    await tester.tap(find.byKey(const ValueKey('edit-d1')));
+
+    expect(edited, [kottu]);
   });
 
   testWidgets('tapping a dish opens it for editing', (tester) async {
@@ -192,5 +215,84 @@ void main() {
       find.text('Chicken Kottu is hidden from customers.'),
       findsOneWidget,
     );
+  });
+
+  group('category chips', () {
+    final menu = [
+      dish('d1'),
+      dish('d2', name: 'Cheese Kottu'),
+      dish('d3', name: 'Iced Milo', category: 'Drinks'),
+    ];
+
+    Color? chipColor(WidgetTester tester, String label) {
+      return tester
+          .widget<Material>(
+            find
+                .ancestor(of: find.text(label), matching: find.byType(Material))
+                .first,
+          )
+          .color;
+    }
+
+    testWidgets('show All and each category with counts', (tester) async {
+      await show(tester, loaded(menu));
+
+      expect(find.text('All 3'), findsOneWidget);
+      expect(find.text('Kottu 2'), findsOneWidget);
+      expect(find.text('Drinks 1'), findsOneWidget);
+    });
+
+    testWidgets('All is orange first and shows headings', (tester) async {
+      await show(tester, loaded(menu));
+
+      expect(chipColor(tester, 'All 3'), AppTheme.brandOrange);
+      expect(chipColor(tester, 'Kottu 2'), isNot(AppTheme.brandOrange));
+      expect(find.text('Kottu'), findsOneWidget);
+      expect(find.text('Drinks'), findsOneWidget);
+    });
+
+    testWidgets('a category chip shows only its dishes, with no heading',
+        (tester) async {
+      await show(tester, loaded(menu));
+
+      await tester.tap(find.text('Drinks 1'));
+      await tester.pumpAndSettle();
+
+      expect(chipColor(tester, 'Drinks 1'), AppTheme.brandOrange);
+      expect(chipColor(tester, 'All 3'), isNot(AppTheme.brandOrange));
+      expect(find.text('Iced Milo'), findsOneWidget);
+      expect(find.text('Chicken Kottu'), findsNothing);
+      expect(find.text('Drinks'), findsNothing);
+    });
+
+    testWidgets('All brings every dish back', (tester) async {
+      await show(tester, loaded(menu));
+      await tester.tap(find.text('Drinks 1'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('All 3'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Iced Milo'), findsOneWidget);
+      expect(find.text('Chicken Kottu'), findsOneWidget);
+      expect(find.text('Cheese Kottu'), findsOneWidget);
+    });
+
+    testWidgets('if the picked category empties, it goes back to All',
+        (tester) async {
+      final changes = StreamController<MenuManageState>();
+      addTearDown(changes.close);
+      await show(tester, loaded(menu), changes: changes.stream);
+      await tester.tap(find.text('Drinks 1'));
+      await tester.pumpAndSettle();
+
+      changes.add(loaded(menu.take(2).toList()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Drinks 1'), findsNothing);
+      expect(chipColor(tester, 'All 2'), AppTheme.brandOrange);
+      expect(find.text('Chicken Kottu'), findsOneWidget);
+      expect(find.text('Cheese Kottu'), findsOneWidget);
+    });
   });
 }
