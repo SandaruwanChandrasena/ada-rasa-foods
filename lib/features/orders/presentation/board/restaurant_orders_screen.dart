@@ -7,6 +7,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/sign_out_button.dart';
 import '../../../auth/presentation/auth_cubit.dart';
+import '../../../dashboard/presentation/owner_dashboard_cubit.dart';
 import '../../../menu/presentation/menu_manage_cubit.dart';
 import '../../../restaurants/presentation/owner/my_restaurant_cubit.dart';
 import '../../../restaurants/presentation/owner/restaurant_photo_cubit.dart';
@@ -18,7 +19,7 @@ import 'restaurant_orders_cubit.dart';
 import 'restaurant_orders_state.dart';
 
 // The restaurant owner's home. Makes the cubits, then shows the
-// Orders, Menu and Profile tabs (RES-1 to RES-5).
+// Home, Orders, Menu and Profile tabs (RES-1 to RES-5).
 class RestaurantOrdersScreen extends StatelessWidget {
   const RestaurantOrdersScreen({super.key});
 
@@ -37,6 +38,9 @@ class RestaurantOrdersScreen extends StatelessWidget {
       providers: [
         BlocProvider<RestaurantOrdersCubit>(
           create: (_) => sl<RestaurantOrdersCubit>()..start(restaurantId),
+        ),
+        BlocProvider<OwnerDashboardCubit>(
+          create: (_) => sl<OwnerDashboardCubit>()..start(restaurantId),
         ),
         BlocProvider<MyRestaurantCubit>(
           create: (_) => sl<MyRestaurantCubit>()..start(restaurantId),
@@ -69,10 +73,17 @@ Future<bool> openDialer(String phone) async {
 
 // The board itself. Public, so tests can give it mock cubits.
 class RestaurantOrdersView extends StatelessWidget {
-  const RestaurantOrdersView({super.key, this.callPhone = openDialer});
+  const RestaurantOrdersView({
+    super.key,
+    this.callPhone = openDialer,
+    this.chipRequest,
+  });
 
   // Tests give a fake, so no real phone app opens.
   final Future<bool> Function(String phone) callPhone;
+
+  // The Home tab cards use it to show a chip.
+  final BoardChipRequest? chipRequest;
 
   @override
   Widget build(BuildContext context) {
@@ -105,18 +116,21 @@ class RestaurantOrdersView extends StatelessWidget {
                 _showMessage(context, state.notice),
           ),
         ],
-        child: Scaffold(
-          appBar: AppBar(
-            title: const _RestaurantName(),
-            centerTitle: false,
-            actions: const [OpenPill(), SizedBox(width: 16)],
-          ),
-          body: Column(
-            children: [
-              const ClosedNote(),
-              const BoardChips(),
-              Expanded(child: _board()),
-            ],
+        child: _ChipSwitcher(
+          request: chipRequest,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const _RestaurantName(),
+              centerTitle: false,
+              actions: const [OpenPill(), SizedBox(width: 16)],
+            ),
+            body: Column(
+              children: [
+                const ClosedNote(),
+                const BoardChips(),
+                Expanded(child: _board()),
+              ],
+            ),
           ),
         ),
       ),
@@ -172,6 +186,61 @@ class RestaurantOrdersView extends StatelessWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+// The Home tab asks the board to show a chip with this.
+// It works even when the same chip is asked for again.
+class BoardChipRequest extends ChangeNotifier {
+  int chip = 0;
+
+  void open(int value) {
+    chip = value;
+    notifyListeners();
+  }
+}
+
+// Jumps to the asked chip. Called from a tap, not during a build,
+// and the board is hidden then, so there is no slide.
+class _ChipSwitcher extends StatefulWidget {
+  const _ChipSwitcher({required this.request, required this.child});
+
+  final BoardChipRequest? request;
+  final Widget child;
+
+  @override
+  State<_ChipSwitcher> createState() => _ChipSwitcherState();
+}
+
+class _ChipSwitcherState extends State<_ChipSwitcher> {
+  @override
+  void initState() {
+    super.initState();
+    widget.request?.addListener(_jump);
+  }
+
+  @override
+  void didUpdateWidget(_ChipSwitcher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.request != oldWidget.request) {
+      oldWidget.request?.removeListener(_jump);
+      widget.request?.addListener(_jump);
+    }
+  }
+
+  void _jump() {
+    final request = widget.request;
+    if (request == null || !mounted) return;
+    DefaultTabController.of(context).index = request.chip;
+  }
+
+  @override
+  void dispose() {
+    widget.request?.removeListener(_jump);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 // The restaurant name, or "Orders" until it loads.

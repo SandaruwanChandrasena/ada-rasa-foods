@@ -15,6 +15,7 @@ import '../../features/auth/presentation/forgot_password_cubit.dart';
 import '../../features/cart/data/cart_repository_impl.dart';
 import '../../features/cart/domain/cart_repository.dart';
 import '../../features/cart/presentation/cart_cubit.dart';
+import '../../features/dashboard/presentation/owner_dashboard_cubit.dart';
 import '../../features/menu/data/cloudinary_uploader.dart';
 import '../../features/menu/data/image_picker_photo_picker.dart';
 import '../../features/menu/data/menu_repository_impl.dart';
@@ -112,6 +113,11 @@ Future<void> initDependencies() async {
   // Factory: a new board cubit each time the restaurant home opens.
   sl.registerFactory<RestaurantOrdersCubit>(
     () => RestaurantOrdersCubit(sl()),
+  );
+
+  // Factory: the owner's Home tab, today's numbers.
+  sl.registerFactory<OwnerDashboardCubit>(
+    () => OwnerDashboardCubit(sl()),
   );
 
   // Saved demo cards (CUS-9)

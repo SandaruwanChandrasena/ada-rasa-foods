@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/owner_bottom_bar.dart';
 import '../../../auth/presentation/auth_cubit.dart';
+import '../../../dashboard/presentation/owner_dashboard_page.dart';
 import '../../../menu/domain/dish.dart';
 import '../../../menu/presentation/dish_form_screen.dart';
 import '../../../menu/presentation/menu_manage_cubit.dart';
@@ -18,7 +19,7 @@ void openDishPage(BuildContext context, DishFormArgs args) {
   context.push(AppRoutes.dishForm, extra: args);
 }
 
-// The owner's three tabs: Orders, Menu and Profile, with a bottom bar.
+// The owner's four tabs: Home, Orders, Menu and Profile.
 // All tabs stay alive, so new order alerts work on every tab.
 class RestaurantShell extends StatefulWidget {
   const RestaurantShell({
@@ -36,7 +37,21 @@ class RestaurantShell extends StatefulWidget {
 }
 
 class _RestaurantShellState extends State<RestaurantShell> {
-  int _index = OwnerBottomBar.orders;
+  int _index = OwnerBottomBar.home;
+
+  // The Home cards use it to open the board on a chip.
+  final _chipRequest = BoardChipRequest();
+
+  void _openBoard(int chip) {
+    _chipRequest.open(chip);
+    setState(() => _index = OwnerBottomBar.orders);
+  }
+
+  @override
+  void dispose() {
+    _chipRequest.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,16 +60,20 @@ class _RestaurantShellState extends State<RestaurantShell> {
     );
 
     return PopScope(
-      // The phone back button goes to Orders first, then closes the app.
-      canPop: _index == OwnerBottomBar.orders,
+      // The phone back button goes to Home first, then closes the app.
+      canPop: _index == OwnerBottomBar.home,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) setState(() => _index = OwnerBottomBar.orders);
+        if (!didPop) setState(() => _index = OwnerBottomBar.home);
       },
       child: Scaffold(
         body: IndexedStack(
           index: _index,
           children: [
-            RestaurantOrdersView(callPhone: widget.callPhone),
+            OwnerDashboardView(onOpenBoard: _openBoard),
+            RestaurantOrdersView(
+              callPhone: widget.callPhone,
+              chipRequest: _chipRequest,
+            ),
             _MenuPage(openDish: widget.openDish),
             const OwnerProfilePage(),
           ],
