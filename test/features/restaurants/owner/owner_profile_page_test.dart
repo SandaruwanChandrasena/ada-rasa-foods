@@ -6,6 +6,7 @@ import 'package:ada_rasa_foods/features/auth/presentation/auth_state.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/owner/my_restaurant_cubit.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/owner/owner_profile_page.dart';
+import 'package:ada_rasa_foods/features/restaurants/presentation/owner/restaurant_photo_card.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/owner/restaurant_photo_cubit.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -147,7 +148,7 @@ void main() {
     testWidgets('shows the restaurant photo card', (tester) async {
       await show(tester);
 
-      expect(find.text('Restaurant photo'), findsOneWidget);
+      expect(find.byType(RestaurantPhotoCard), findsOneWidget);
     });
   });
 

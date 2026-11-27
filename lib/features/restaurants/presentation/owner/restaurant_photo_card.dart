@@ -3,19 +3,21 @@ import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/food_image.dart';
 import '../../../../core/widgets/photo_confirm_sheet.dart';
 import '../../../menu/domain/photo_picker.dart';
+import '../../domain/restaurant.dart';
 import 'my_restaurant_cubit.dart';
 import 'restaurant_photo_cubit.dart';
 
-// The restaurant photo at the top of the owner's Menu tab (RES-3).
+// The big restaurant cover photo on the owner's Profile tab (RES-3),
+// with the name, cuisine and address under it.
 // The live photo comes from MyRestaurantCubit.
 class RestaurantPhotoCard extends StatelessWidget {
   const RestaurantPhotoCard({super.key});
 
-  static const double photoWidth = 96;
-  static const double photoHeight = 64;
+  static const double coverHeight = 180;
 
   @override
   Widget build(BuildContext context) {
@@ -36,109 +38,159 @@ class RestaurantPhotoCard extends StatelessWidget {
           ..showSnackBar(SnackBar(content: Text(notice)));
       },
       builder: (context, state) {
-        final hasPhoto = restaurant.hasImage;
-        final textTheme = Theme.of(context).textTheme;
-
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _Thumbnail(
-                        imageUrl: restaurant.imageUrl,
-                        photoPath: state.photoPath,
-                        onTap: state.isBusy ? null : () => _pick(context),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Restaurant photo',
-                              style: textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              'Customers see it on your restaurant page.',
-                              style: textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _actions(context, state, hasPhoto),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (state.isUploading) ...[
-                    const SizedBox(height: 10),
-                    LinearProgressIndicator(value: state.uploadProgress),
-                  ],
-                ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _cover(context, state, restaurant),
+              const SizedBox(height: 12),
+              Text(
+                restaurant.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.textDark,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
+              const SizedBox(height: 2),
+              Text(
+                '${restaurant.cuisine} · ${restaurant.address}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppTheme.textMuted),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _actions(
+  Widget _cover(
     BuildContext context,
     RestaurantPhotoState state,
-    bool hasPhoto,
+    Restaurant restaurant,
   ) {
-    if (state.isUploading) {
-      final percent = (state.uploadProgress * 100).round();
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text('Uploading $percent%'),
+    final hasPhoto = restaurant.hasImage;
+    final path = state.photoPath;
+
+    final Widget picture;
+    if (path != null) {
+      picture = Image.file(
+        File(path),
+        key: const Key('restaurant-picked-photo'),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const _AddPhotoBox(),
       );
-    }
-    if (state.isBusy) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            SizedBox(width: 8),
-            Expanded(child: Text('Saving...')),
-          ],
-        ),
+    } else if (hasPhoto) {
+      picture = FoodImage(
+        imageUrl: restaurant.imageUrl,
+        width: double.infinity,
+        height: coverHeight,
+        borderRadius: 0,
       );
+    } else {
+      picture = const _AddPhotoBox();
     }
 
-    // Wrap, not Row, so long button text never overflows.
-    return Wrap(
-      spacing: 4,
-      children: [
-        TextButton(
-          onPressed: () => _pick(context),
-          child: Text(hasPhoto ? 'Change photo' : 'Choose photo'),
-        ),
-        if (hasPhoto)
-          TextButton(
-            onPressed: () => _confirmRemove(context),
-            child: const Text('Remove photo'),
+    return SizedBox(
+      height: coverHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Semantics(
+            button: true,
+            label: hasPhoto ? 'Change photo' : 'Add a photo',
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                key: const Key('restaurant-photo-box'),
+                onTap: state.isBusy ? null : () => _pick(context),
+                child: picture,
+              ),
+            ),
           ),
-      ],
+          if (state.isUploading)
+            _DarkLayer(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Uploading ${(state.uploadProgress * 100).round()}%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: 160,
+                    child: LinearProgressIndicator(
+                      value: state.uploadProgress,
+                      minHeight: 4,
+                      color: Colors.white,
+                      backgroundColor: Colors.white24,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (state.isBusy)
+            const _DarkLayer(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Saving...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (hasPhoto)
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _CircleButton(
+                    key: const Key('remove-photo-button'),
+                    icon: Icons.delete_rounded,
+                    color: AppTheme.dangerRed,
+                    label: 'Remove photo',
+                    onTap: () => _confirmRemove(context),
+                  ),
+                  const SizedBox(width: 8),
+                  _CircleButton(
+                    key: const Key('change-photo-button'),
+                    icon: Icons.photo_camera_rounded,
+                    color: AppTheme.brandOrange,
+                    label: 'Change photo',
+                    onTap: () => _pick(context),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -170,7 +222,7 @@ class RestaurantPhotoCard extends StatelessWidget {
             // The app theme makes FilledButton full width, so we set a size.
             style: FilledButton.styleFrom(
               minimumSize: const Size(88, 40),
-              backgroundColor: Colors.red.shade700,
+              backgroundColor: AppTheme.dangerRed,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Remove'),
@@ -182,54 +234,87 @@ class RestaurantPhotoCard extends StatelessWidget {
   }
 }
 
-class _Thumbnail extends StatelessWidget {
-  const _Thumbnail({
-    required this.imageUrl,
-    required this.photoPath,
-    required this.onTap,
-  });
-
-  final String imageUrl;
-
-  // The picked photo while it uploads.
-  final String? photoPath;
-  final VoidCallback? onTap;
+// Soft orange box with a camera, when there is no photo yet.
+class _AddPhotoBox extends StatelessWidget {
+  const _AddPhotoBox();
 
   @override
   Widget build(BuildContext context) {
-    const width = RestaurantPhotoCard.photoWidth;
-    const height = RestaurantPhotoCard.photoHeight;
-    final path = photoPath;
+    return const ColoredBox(
+      color: AppTheme.softOrange,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.add_a_photo_rounded,
+            size: 36,
+            color: AppTheme.brandOrange,
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Add a photo',
+            style: TextStyle(
+              color: AppTheme.deepOrange,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        key: const Key('restaurant-photo-box'),
-        onTap: onTap,
-        child: path == null
-            ? FoodImage(
-                imageUrl: imageUrl,
-                width: width,
-                height: height,
-                borderRadius: 8,
-                iconSize: 28,
-              )
-            : Image.file(
-                File(path),
-                key: const Key('restaurant-picked-photo'),
-                width: width,
-                height: height,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const FoodImage(
-                  imageUrl: '',
-                  width: width,
-                  height: height,
-                  borderRadius: 8,
-                  iconSize: 28,
-                ),
-              ),
+// A dark layer over the photo while it uploads or saves.
+class _DarkLayer extends StatelessWidget {
+  const _DarkLayer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.45),
+        child: Center(child: child),
+      ),
+    );
+  }
+}
+
+// A white round button on the photo.
+class _CircleButton extends StatelessWidget {
+  const _CircleButton({
+    super.key,
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icon, size: 22, color: color),
+          ),
+        ),
       ),
     );
   }

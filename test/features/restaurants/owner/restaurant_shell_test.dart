@@ -142,6 +142,9 @@ void main() {
   // Only what is really on screen. The hidden tabs stay in the tree.
   Finder onScreen(String text) => find.text(text).hitTestable();
 
+  Finder photoCover() =>
+      find.byKey(const Key('restaurant-photo-box')).hitTestable();
+
   Future<void> openTab(WidgetTester tester, String label) async {
     await tester.tap(
       find.descendant(
@@ -220,7 +223,7 @@ void main() {
 
     await openTab(tester, 'Menu');
 
-    expect(onScreen('Restaurant photo'), findsNothing);
+    expect(photoCover(), findsNothing);
     expect(find.byTooltip('Sign out').hitTestable(), findsNothing);
   });
 
@@ -230,7 +233,7 @@ void main() {
 
     await openTab(tester, 'Profile');
 
-    expect(onScreen('Restaurant photo'), findsOneWidget);
+    expect(photoCover(), findsOneWidget);
     expect(onScreen('Open for orders'), findsOneWidget);
     expect(onScreen('Cheese Kottu'), findsNothing);
   });

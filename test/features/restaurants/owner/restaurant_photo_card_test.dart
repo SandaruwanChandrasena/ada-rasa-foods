@@ -1,3 +1,4 @@
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/core/widgets/photo_confirm_sheet.dart';
 import 'package:ada_rasa_foods/features/menu/domain/photo_picker.dart';
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
@@ -90,32 +91,87 @@ void main() {
     await tester.pump();
   }
 
+  Finder photoBox() => find.byKey(const Key('restaurant-photo-box'));
+  Finder removeButton() => find.byKey(const Key('remove-photo-button'));
+  Finder changeButton() => find.byKey(const Key('change-photo-button'));
+
   testWidgets('shows nothing until the restaurant loads', (tester) async {
     await show(tester);
 
-    expect(find.text('Restaurant photo'), findsNothing);
-    expect(find.text('Choose photo'), findsNothing);
+    expect(photoBox(), findsNothing);
+    expect(find.text('Add a photo'), findsNothing);
+    expect(find.text('Kottu Corner'), findsNothing);
   });
 
-  testWidgets('no photo: Choose photo and no Remove photo', (tester) async {
+  testWidgets('no photo: Add a photo, and no round buttons',
+      (tester) async {
     await show(tester, restaurant: noPhoto);
 
-    expect(find.text('Restaurant photo'), findsOneWidget);
-    expect(find.text('Choose photo'), findsOneWidget);
-    expect(find.text('Remove photo'), findsNothing);
+    expect(find.text('Add a photo'), findsOneWidget);
+    expect(find.byIcon(Icons.add_a_photo_rounded), findsOneWidget);
+    expect(removeButton(), findsNothing);
+    expect(changeButton(), findsNothing);
   });
 
-  testWidgets('a photo: Change photo and Remove photo', (tester) async {
+  testWidgets('a photo: camera and bin buttons on it', (tester) async {
     await show(tester, restaurant: withPhoto);
 
-    expect(find.text('Change photo'), findsOneWidget);
-    expect(find.text('Remove photo'), findsOneWidget);
+    expect(find.text('Add a photo'), findsNothing);
+    expect(changeButton(), findsOneWidget);
+    expect(removeButton(), findsOneWidget);
   });
 
-  testWidgets('Choose photo starts the pick and upload', (tester) async {
+  testWidgets('the bin is red and the camera orange, on white',
+      (tester) async {
+    await show(tester, restaurant: withPhoto);
+
+    final bin = tester.widget<Icon>(
+      find.descendant(of: removeButton(), matching: find.byType(Icon)),
+    );
+    final camera = tester.widget<Icon>(
+      find.descendant(of: changeButton(), matching: find.byType(Icon)),
+    );
+    expect(bin.color, AppTheme.dangerRed);
+    expect(camera.color, AppTheme.brandOrange);
+    final circle = tester.widget<Material>(
+      find.descendant(of: removeButton(), matching: find.byType(Material)),
+    );
+    expect(circle.color, Colors.white);
+  });
+
+  testWidgets('the cover is 180 high', (tester) async {
+    await show(tester, restaurant: withPhoto);
+
+    expect(tester.getSize(photoBox()).height, 180);
+  });
+
+  testWidgets('shows the name, cuisine and address', (tester) async {
     await show(tester, restaurant: noPhoto);
 
-    await tester.tap(find.text('Choose photo'));
+    expect(find.text('Kottu Corner'), findsOneWidget);
+    expect(find.text('Sri Lankan · Colombo'), findsOneWidget);
+  });
+
+  testWidgets('a very long name does not overflow', (tester) async {
+    const longName = Restaurant(
+      id: 'r1',
+      name: 'The Very Long Named Kottu And Rice Corner Of Colombo Fort',
+      cuisine: 'Sri Lankan',
+      ownerId: 'o1',
+      address: 'No. 123, A Very Long Street Name, Colombo 03',
+      latitude: 6.9,
+      longitude: 79.8,
+    );
+
+    await show(tester, restaurant: longName);
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tapping the empty box starts the pick', (tester) async {
+    await show(tester, restaurant: noPhoto);
+
+    await tester.tap(find.text('Add a photo'));
     await tester.pump();
 
     verify(() => photo.pickAndUpload(confirm: any(named: 'confirm'))).called(1);
@@ -124,7 +180,16 @@ void main() {
   testWidgets('tapping the photo also starts the pick', (tester) async {
     await show(tester, restaurant: withPhoto);
 
-    await tester.tap(find.byKey(const Key('restaurant-photo-box')));
+    await tester.tap(photoBox());
+    await tester.pump();
+
+    verify(() => photo.pickAndUpload(confirm: any(named: 'confirm'))).called(1);
+  });
+
+  testWidgets('the camera button starts the pick', (tester) async {
+    await show(tester, restaurant: withPhoto);
+
+    await tester.tap(changeButton());
     await tester.pump();
 
     verify(() => photo.pickAndUpload(confirm: any(named: 'confirm'))).called(1);
@@ -132,7 +197,7 @@ void main() {
 
   testWidgets('the pick shows the Use this photo sheet', (tester) async {
     await show(tester, restaurant: noPhoto);
-    await tester.tap(find.text('Choose photo'));
+    await tester.tap(photoBox());
     await tester.pump();
     final confirm = verify(
       () => photo.pickAndUpload(confirm: captureAny(named: 'confirm')),
@@ -162,8 +227,8 @@ void main() {
     expect(find.byKey(const Key('restaurant-picked-photo')), findsOneWidget);
     expect(find.text('Uploading 45%'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    expect(find.text('Change photo'), findsNothing);
-    expect(find.text('Remove photo'), findsNothing);
+    expect(changeButton(), findsNothing);
+    expect(removeButton(), findsNothing);
   });
 
   testWidgets('saving shows Saving and blocks the photo tap',
@@ -174,19 +239,19 @@ void main() {
     await show(tester, restaurant: withPhoto);
 
     expect(find.text('Saving...'), findsOneWidget);
-    expect(find.text('Change photo'), findsNothing);
+    expect(changeButton(), findsNothing);
 
-    await tester.tap(find.byKey(const Key('restaurant-photo-box')));
+    await tester.tap(photoBox(), warnIfMissed: false);
     await tester.pump();
 
     verifyNever(() => photo.pickAndUpload(confirm: any(named: 'confirm')));
   });
 
-  testWidgets('Remove photo asks first, and Cancel keeps it',
+  testWidgets('the bin asks first, and Cancel keeps the photo',
       (tester) async {
     await show(tester, restaurant: withPhoto);
 
-    await tester.tap(find.text('Remove photo'));
+    await tester.tap(removeButton());
     await tester.pumpAndSettle();
     expect(find.text('Remove the restaurant photo?'), findsOneWidget);
 
@@ -197,10 +262,10 @@ void main() {
     expect(find.text('Remove the restaurant photo?'), findsNothing);
   });
 
-  testWidgets('Remove in the dialog removes the photo', (tester) async {
+  testWidgets('Remove in the question removes the photo', (tester) async {
     await show(tester, restaurant: withPhoto);
 
-    await tester.tap(find.text('Remove photo'));
+    await tester.tap(removeButton());
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
     await tester.pumpAndSettle();
