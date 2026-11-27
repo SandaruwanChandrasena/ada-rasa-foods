@@ -14,4 +14,14 @@ abstract class RestaurantRepository {
 
   // The owner changes the restaurant photo. Empty removes it (RES-3).
   Future<void> setImageUrl(String restaurantId, String imageUrl);
+
+  // The owner changes the shop details. Phone is digits only, or empty.
+  // The address stays with the admin, because it goes with the map point.
+  Future<void> updateDetails(
+    String restaurantId, {
+    required String name,
+    required String cuisine,
+    required String phone,
+    required String description,
+  });
 }

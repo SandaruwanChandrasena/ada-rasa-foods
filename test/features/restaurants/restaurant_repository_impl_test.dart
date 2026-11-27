@@ -267,6 +267,114 @@ void main() {
     });
   });
 
+  group('updateDetails', () {
+    Future<Map<String, dynamic>> readRaw(String id) async {
+      final doc = await firestore.collection('restaurants').doc(id).get();
+      return doc.data()!;
+    }
+
+    Future<void> save({
+      String id = 'r1',
+      String name = 'Kottu Corner Plus',
+      String cuisine = 'Sri Lankan',
+      String phone = '0712345678',
+      String description = 'Best kottu in town.',
+    }) {
+      return repository.updateDetails(
+        id,
+        name: name,
+        cuisine: cuisine,
+        phone: phone,
+        description: description,
+      );
+    }
+
+    test('saves the name, cuisine, phone and description', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+
+      await save();
+      final raw = await readRaw('r1');
+
+      expect(raw['name'], 'Kottu Corner Plus');
+      expect(raw['cuisine'], 'Sri Lankan');
+      expect(raw['phone'], '0712345678');
+      expect(raw['description'], 'Best kottu in town.');
+    });
+
+    test('trims spaces at the start and end', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+
+      await save(
+        name: '  Kottu Corner  ',
+        cuisine: ' Sri Lankan ',
+        phone: ' 0712345678 ',
+        description: '  Fresh food.  ',
+      );
+      final raw = await readRaw('r1');
+
+      expect(raw['name'], 'Kottu Corner');
+      expect(raw['cuisine'], 'Sri Lankan');
+      expect(raw['phone'], '0712345678');
+      expect(raw['description'], 'Fresh food.');
+    });
+
+    test('an empty phone and description are saved as empty', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      await save();
+
+      await save(phone: '', description: '');
+      final raw = await readRaw('r1');
+
+      expect(raw['phone'], '');
+      expect(raw['description'], '');
+    });
+
+    test('does not touch the address, map point, photo or open state',
+        () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      final before = await readRaw('r1');
+
+      await save();
+      final after = await readRaw('r1');
+
+      expect(after['address'], before['address']);
+      expect(after['location'], before['location']);
+      expect(after['imageUrl'], before['imageUrl']);
+      expect(after['isOpen'], before['isOpen']);
+      expect(after['isActive'], before['isActive']);
+      expect(after['ownerId'], before['ownerId']);
+      expect(after['createdAt'], before['createdAt']);
+      expect(
+        after.keys.toSet().difference(before.keys.toSet()),
+        {'phone', 'description'},
+      );
+    });
+
+    test('sends a live update to watchRestaurant', () async {
+      await addRestaurant('r1', name: 'Kottu Corner');
+      final results = <Restaurant?>[];
+      final subscription =
+          repository.watchRestaurant('r1').listen(results.add);
+      await settle();
+
+      await save();
+      await settle();
+
+      expect(results.first!.hasPhone, isFalse);
+      expect(results.last!.name, 'Kottu Corner Plus');
+      expect(results.last!.phone, '0712345678');
+      expect(results.last!.description, 'Best kottu in town.');
+      await subscription.cancel();
+    });
+
+    test('fails when the restaurant does not exist', () async {
+      await expectLater(
+        save(id: 'missing'),
+        throwsA(const DataFailure('This restaurant was not found.')),
+      );
+    });
+  });
+
   group('Restaurant helpers', () {
     const openRestaurant = Restaurant(
       id: 'r1',

@@ -73,8 +73,36 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
         throw const DataFailure('This restaurant was not found.');
       }
 
-      // The rules let the owner change only isOpen and imageUrl.
+      // The rules let the owner change only isOpen, imageUrl and details.
       await ref.update({'imageUrl': imageUrl});
+    } catch (error) {
+      throw toDataFailure(error);
+    }
+  }
+
+  @override
+  Future<void> updateDetails(
+    String restaurantId, {
+    required String name,
+    required String cuisine,
+    required String phone,
+    required String description,
+  }) async {
+    final ref = _restaurants.doc(restaurantId);
+
+    try {
+      final doc = await ref.get(const GetOptions(source: Source.server));
+      if (!doc.exists) {
+        throw const DataFailure('This restaurant was not found.');
+      }
+
+      // Only these 4 fields, so the rules never see an address change.
+      await ref.update({
+        'name': name.trim(),
+        'cuisine': cuisine.trim(),
+        'phone': phone.trim(),
+        'description': description.trim(),
+      });
     } catch (error) {
       throw toDataFailure(error);
     }
