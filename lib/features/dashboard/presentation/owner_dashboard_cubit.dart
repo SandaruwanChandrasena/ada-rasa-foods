@@ -5,10 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/errors/data_failure.dart';
 import '../../orders/domain/food_order.dart';
 import '../../orders/domain/order_repository.dart';
+import '../domain/dash_period.dart';
 import '../domain/day_summary.dart';
 import 'owner_dashboard_state.dart';
 
-// Today's numbers for the owner, live. Starts again at midnight.
+// The owner's numbers, live. Loads the last 30 days once, so the
+// period switch needs no new read. Starts again at midnight.
 class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
   OwnerDashboardCubit(this._orderRepository, {DateTime Function()? now})
       : _now = now ?? DateTime.now,
@@ -23,18 +25,19 @@ class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
   StreamSubscription<List<FoodOrder>>? _endedSubscription;
   Timer? _midnightTimer;
   String? _restaurantId;
+  DashPeriod _period = DashPeriod.today;
 
   // Null until each list arrives the first time.
   List<FoodOrder>? _open;
-  List<FoodOrder>? _endedToday;
+  List<FoodOrder>? _ended;
 
   // Starts (or restarts) watching. The Retry button also calls this.
   Future<void> start(String restaurantId) async {
     _restaurantId = restaurantId;
     await _stop();
     _open = null;
-    _endedToday = null;
-    emit(const OwnerDashboardState());
+    _ended = null;
+    emit(OwnerDashboardState(period: _period));
 
     _openSubscription = _orderRepository
         .watchRestaurantOpenOrders(restaurantId)
@@ -42,7 +45,7 @@ class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
           _open = open;
           _emitSummary();
         }, onError: _onError);
-    _watchToday(restaurantId);
+    _watchEnded(restaurantId);
   }
 
   void retry() {
@@ -50,12 +53,30 @@ class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
     if (restaurantId != null) start(restaurantId);
   }
 
-  // The timer calls this at midnight, so today starts from zero.
+  // Today, 7 days or 30 days. Uses the orders already loaded.
+  void pickPeriod(DashPeriod period) {
+    if (period == _period) return;
+    _period = period;
+    if (_open != null && _ended != null) {
+      _emitSummary();
+    } else {
+      emit(
+        OwnerDashboardState(
+          view: state.view,
+          period: period,
+          errorMessage: state.errorMessage,
+        ),
+      );
+    }
+  }
+
+  // The timer calls this at midnight, so the days move on.
   Future<void> newDay() async {
     final restaurantId = _restaurantId;
     if (restaurantId == null || isClosed) return;
     await _endedSubscription?.cancel();
-    _watchToday(restaurantId);
+    _watchEnded(restaurantId);
+    _emitSummary();
   }
 
   // A small margin, so the timer surely fires on the new day.
@@ -64,14 +85,13 @@ class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
     return midnight.difference(now) + const Duration(seconds: 1);
   }
 
-  void _watchToday(String restaurantId) {
+  void _watchEnded(String restaurantId) {
     final now = _now();
-    final since = DateTime(now.year, now.month, now.day);
 
     _endedSubscription = _orderRepository
-        .watchRestaurantEndedSince(restaurantId, since)
+        .watchRestaurantEndedSince(restaurantId, DashPeriod.longest.since(now))
         .listen((ended) {
-          _endedToday = ended;
+          _ended = ended;
           _emitSummary();
         }, onError: _onError);
 
@@ -81,18 +101,22 @@ class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
 
   void _emitSummary() {
     final open = _open;
-    final endedToday = _endedToday;
-    if (open == null || endedToday == null || isClosed) return;
+    final ended = _ended;
+    if (open == null || ended == null || isClosed) return;
 
     final now = _now();
     emit(
       OwnerDashboardState(
         view: DashboardView.loaded,
+        period: _period,
         summary: DaySummary.from(
           open: open,
-          ended: endedToday,
-          since: DateTime(now.year, now.month, now.day),
+          ended: ended,
+          since: _period.since(now),
+          maxTopDishes: _period.maxTopDishes,
         ),
+        weekSales: salesByDay(ended, now),
+        today: DateTime(now.year, now.month, now.day),
       ),
     );
   }
@@ -102,6 +126,7 @@ class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
     emit(
       OwnerDashboardState(
         view: DashboardView.failure,
+        period: _period,
         errorMessage: error is DataFailure
             ? error.message
             : 'Something went wrong. Please try again.',
