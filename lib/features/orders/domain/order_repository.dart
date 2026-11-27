@@ -22,6 +22,13 @@ abstract class OrderRepository {
   // The newest ended orders of the restaurant (RES-1 Done tab).
   Stream<List<FoodOrder>> watchRestaurantDoneOrders(String restaurantId);
 
+  // Ended orders placed at or after [since], newest first.
+  // All of them, with no limit (owner dashboard).
+  Stream<List<FoodOrder>> watchRestaurantEndedSince(
+    String restaurantId,
+    DateTime since,
+  );
+
   // A restaurant step, like accept or ready (RES-2, RES-5).
   // The payment changes too when needed.
   Future<void> moveOrder(FoodOrder order, OrderStatus next);

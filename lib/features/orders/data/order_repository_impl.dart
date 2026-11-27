@@ -127,6 +127,22 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
+  Stream<List<FoodOrder>> watchRestaurantEndedSince(
+    String restaurantId,
+    DateTime since,
+  ) {
+    // Uses the same index as the Done tab. One day is small, so no limit.
+    return _orders
+        .where('restaurantId', isEqualTo: restaurantId)
+        .where('status', whereIn: [for (final s in OrderStatus.ends) s.name])
+        .where('placedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(since))
+        .orderBy('placedAt', descending: true)
+        .snapshots()
+        .map(_toOrders)
+        .mapErrorsToDataFailure();
+  }
+
+  @override
   Future<void> moveOrder(FoodOrder order, OrderStatus next) async {
     final ref = _orders.doc(order.id);
 
