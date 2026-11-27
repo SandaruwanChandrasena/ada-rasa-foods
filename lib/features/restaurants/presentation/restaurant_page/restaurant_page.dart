@@ -4,18 +4,16 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/food_image.dart';
-import '../../../../core/widgets/open_status_chip.dart';
 import '../../../../core/widgets/photo_header.dart';
 import '../../../cart/presentation/add_to_cart_button.dart';
 import '../../../cart/presentation/cart_bar.dart';
 import '../../../cart/presentation/cart_icon_button.dart';
 import '../../../cart/presentation/cart_problem_banner.dart';
 import '../../../menu/presentation/dish_row.dart';
-import '../../domain/restaurant.dart';
 import 'restaurant_detail_cubit.dart';
 import 'restaurant_detail_state.dart';
+import 'restaurant_info_section.dart';
 
 // Restaurant page: photo, details, and menu by category (CUS-2).
 class RestaurantPage extends StatelessWidget {
@@ -106,7 +104,9 @@ class _LoadedView extends StatelessWidget {
           SliverToBoxAdapter(
             child: CartProblemBanner(restaurantId: restaurant.id),
           ),
-          SliverToBoxAdapter(child: _InfoSection(restaurant: restaurant)),
+          SliverToBoxAdapter(
+            child: RestaurantInfoSection(restaurant: restaurant),
+          ),
           if (sections.isEmpty)
             const SliverToBoxAdapter(
               child: Padding(
@@ -149,86 +149,6 @@ class _LoadedView extends StatelessWidget {
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
-    );
-  }
-}
-
-class _InfoSection extends StatelessWidget {
-  const _InfoSection({required this.restaurant});
-
-  static const closedText = 'Closed now. You can still see the menu.';
-
-  final Restaurant restaurant;
-
-  @override
-  Widget build(BuildContext context) {
-    final open = restaurant.canTakeOrders;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  restaurant.name,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              OpenStatusChip(isOpen: open),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _InfoLine(
-            icon: Icons.restaurant_menu_rounded,
-            text: restaurant.cuisine,
-          ),
-          const SizedBox(height: 6),
-          _InfoLine(
-            icon: Icons.location_on_rounded,
-            text: restaurant.address,
-          ),
-          if (!open) ...[
-            const SizedBox(height: 12),
-            Text(
-              closedText,
-              style: const TextStyle(
-                color: AppTheme.dangerRed,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-          const Divider(height: 28),
-        ],
-      ),
-    );
-  }
-}
-
-// An orange icon with grey text, like on the Home cards.
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppTheme.brandOrange),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(text, style: const TextStyle(color: AppTheme.textMuted)),
-        ),
-      ],
     );
   }
 }
