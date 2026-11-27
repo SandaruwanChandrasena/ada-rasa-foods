@@ -345,8 +345,8 @@ class _DishFormViewState extends State<DishFormView> {
   }
 }
 
-// The dish photo, like the Profile cover: a camera and a bin on it,
-// or "Add a photo" when empty. Public, so tests can find it.
+// The dish photo, like the Profile cover: Remove and Change photo
+// under it, or "Add a photo" when empty. Public, so tests can find it.
 class DishPhotoBox extends StatelessWidget {
   const DishPhotoBox({
     super.key,
@@ -386,12 +386,12 @@ class DishPhotoBox extends StatelessWidget {
       picture = const _AddPhotoBox();
     }
 
-    return SizedBox(
-      height: height,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Semantics(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: height,
+          child: Semantics(
             button: true,
             label: state.hasPhoto ? 'Change photo' : 'Add a photo',
             child: Material(
@@ -405,34 +405,36 @@ class DishPhotoBox extends StatelessWidget {
               ),
             ),
           ),
-          // Hidden while saving, so the photo can't change halfway.
-          if (state.hasPhoto && !busy)
-            Positioned(
-              right: 10,
-              bottom: 10,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _CircleButton(
-                    key: const Key('dish-remove-photo'),
-                    icon: Icons.delete_rounded,
-                    color: AppTheme.dangerRed,
-                    label: 'Remove photo',
-                    onTap: onRemove,
-                  ),
-                  const SizedBox(width: 8),
-                  _CircleButton(
-                    key: const Key('dish-change-photo'),
-                    icon: Icons.photo_camera_rounded,
-                    color: AppTheme.brandOrange,
-                    label: 'Change photo',
-                    onTap: onPick,
-                  ),
-                ],
+        ),
+        if (state.hasPhoto) ...[
+          const SizedBox(height: 10),
+          // On white, so they show on any photo. Wrap for big fonts.
+          // While saving they stay, so nothing jumps, but can't be tapped.
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _Pill(
+                key: const Key('dish-remove-photo'),
+                icon: Icons.delete_rounded,
+                text: 'Remove',
+                color: AppTheme.dangerRed,
+                background: AppTheme.dangerBg,
+                onTap: busy ? null : onRemove,
               ),
-            ),
+              _Pill(
+                key: const Key('dish-change-photo'),
+                icon: Icons.photo_camera_rounded,
+                text: 'Change photo',
+                color: AppTheme.deepOrange,
+                background: AppTheme.softOrange,
+                onTap: busy ? null : onPick,
+              ),
+            ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -467,37 +469,43 @@ class _AddPhotoBox extends StatelessWidget {
   }
 }
 
-// A white round button on the photo.
-class _CircleButton extends StatelessWidget {
-  const _CircleButton({
+// A soft pill button with an icon and a word, like on Profile.
+class _Pill extends StatelessWidget {
+  const _Pill({
     super.key,
     required this.icon,
+    required this.text,
     required this.color,
-    required this.label,
+    required this.background,
     required this.onTap,
   });
 
   final IconData icon;
+  final String text;
   final Color color;
-  final String label;
-  final VoidCallback onTap;
+  final Color background;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.white,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: SizedBox(
-            width: 44,
-            height: 44,
-            child: Icon(icon, size: 22, color: color),
+    return Material(
+      color: background,
+      shape: const StadiumBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 14, 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 6),
+              Text(
+                text,
+                style: TextStyle(color: color, fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
         ),
       ),

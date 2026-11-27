@@ -374,7 +374,7 @@ void main() {
   });
 
   group('photo', () {
-    testWidgets('a new dish shows Add a photo and no round buttons',
+    testWidgets('a new dish shows Add a photo and no photo buttons',
         (tester) async {
       await openForm(tester);
 
@@ -385,17 +385,34 @@ void main() {
       expect(find.byKey(const Key('picked-photo')), findsNothing);
     });
 
-    testWidgets('a dish with a photo shows the camera and the bin',
+    testWidgets('a dish with a photo shows Remove and Change photo',
         (tester) async {
       await openForm(tester, dish: kottuWithPhoto);
 
       expect(find.text('Add a photo'), findsNothing);
-      expect(changePhoto(), findsOneWidget);
-      expect(removePhoto(), findsOneWidget);
+      expect(find.text('Remove'), findsOneWidget);
+      expect(find.text('Change photo'), findsOneWidget);
       final bin = tester.widget<Icon>(
         find.descendant(of: removePhoto(), matching: find.byType(Icon)),
       );
       expect(bin.color, AppTheme.dangerRed);
+    });
+
+    testWidgets('the photo pills sit under the photo, in soft colours',
+        (tester) async {
+      await openForm(tester, dish: kottuWithPhoto);
+
+      final photoBottom = tester.getRect(photoBox()).bottom;
+      expect(tester.getRect(changePhoto()).top, greaterThan(photoBottom));
+      expect(tester.getRect(removePhoto()).top, greaterThan(photoBottom));
+
+      Color? background(Finder pill) => tester
+          .widget<Material>(
+            find.descendant(of: pill, matching: find.byType(Material)).first,
+          )
+          .color;
+      expect(background(removePhoto()), AppTheme.dangerBg);
+      expect(background(changePhoto()), AppTheme.softOrange);
     });
 
     testWidgets('the camera button opens the gallery', (tester) async {
@@ -501,8 +518,12 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.text('Uploading 45%'), findsOneWidget);
       expect(tester.widget<TextField>(field('Dish name')).enabled, isFalse);
-      expect(changePhoto(), findsNothing);
-      expect(removePhoto(), findsNothing);
+      // The pills stay, so nothing jumps, but they can't be tapped.
+      InkWell tapArea(Finder pill) => tester.widget<InkWell>(
+            find.descendant(of: pill, matching: find.byType(InkWell)),
+          );
+      expect(tapArea(changePhoto()).onTap, isNull);
+      expect(tapArea(removePhoto()).onTap, isNull);
       final box = tester.widget<InkWell>(photoBox());
       expect(box.onTap, isNull);
 
