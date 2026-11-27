@@ -5,9 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/di/injection.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/food_image.dart';
 import '../../../core/widgets/photo_confirm_sheet.dart';
-import '../../../core/widgets/round_icon_button.dart';
+import '../../../core/widgets/section_card.dart';
 import '../domain/dish.dart';
 import '../domain/photo_picker.dart';
 import 'dish_form_cubit.dart';
@@ -110,15 +111,6 @@ class _DishFormViewState extends State<DishFormView> {
           child: Scaffold(
             appBar: AppBar(
               title: Text(state.isEditing ? 'Edit dish' : 'Add dish'),
-              actions: [
-                if (state.isEditing)
-                  RoundIconButton(
-                    tooltip: 'Delete dish',
-                    icon: Icons.delete_rounded,
-                    style: RoundIconStyle.danger,
-                    onPressed: state.isBusy ? null : () => _delete(context),
-                  ),
-              ],
             ),
             body: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -137,6 +129,7 @@ class _DishFormViewState extends State<DishFormView> {
                   decoration: InputDecoration(
                     labelText: 'Dish name',
                     hintText: 'Chicken Kottu',
+                    prefixIcon: const _FieldIcon(Icons.restaurant_rounded),
                     errorText: errors ? state.nameError : null,
                   ),
                   onChanged: cubit.nameChanged,
@@ -151,6 +144,7 @@ class _DishFormViewState extends State<DishFormView> {
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
                     labelText: 'Description (optional)',
+                    prefixIcon: const _FieldIcon(Icons.notes_rounded),
                     errorText: errors ? state.descriptionError : null,
                   ),
                   onChanged: cubit.descriptionChanged,
@@ -168,6 +162,7 @@ class _DishFormViewState extends State<DishFormView> {
                   decoration: InputDecoration(
                     labelText: 'Price',
                     prefixText: 'Rs. ',
+                    prefixIcon: const _FieldIcon(Icons.sell_rounded),
                     errorText: errors ? state.priceError : null,
                   ),
                   onChanged: cubit.priceChanged,
@@ -181,6 +176,7 @@ class _DishFormViewState extends State<DishFormView> {
                   decoration: InputDecoration(
                     labelText: 'Category',
                     hintText: 'Kottu',
+                    prefixIcon: const _FieldIcon(Icons.category_rounded),
                     errorText: errors ? state.categoryError : null,
                   ),
                   onChanged: cubit.categoryChanged,
@@ -188,12 +184,14 @@ class _DishFormViewState extends State<DishFormView> {
                 if (widget.categories.isNotEmpty)
                   Wrap(
                     spacing: 8,
-                    runSpacing: 4,
+                    runSpacing: 8,
                     children: [
                       for (final category in widget.categories)
-                        ActionChip(
-                          label: Text(category),
-                          onPressed: state.isBusy
+                        CategoryChip(
+                          label: category,
+                          // Orange when it matches the box.
+                          selected: state.category.trim() == category,
+                          onTap: state.isBusy
                               ? null
                               : () {
                                   _category.text = category;
@@ -202,12 +200,9 @@ class _DishFormViewState extends State<DishFormView> {
                         ),
                     ],
                   ),
-                const SizedBox(height: 8),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Available'),
-                  subtitle: const Text('Customers can order this dish.'),
-                  value: state.available,
+                const SizedBox(height: 16),
+                _AvailableCard(
+                  available: state.available,
                   onChanged: state.isBusy ? null : cubit.availableChanged,
                 ),
               ],
@@ -222,10 +217,35 @@ class _DishFormViewState extends State<DishFormView> {
                       LinearProgressIndicator(value: state.uploadProgress),
                       const SizedBox(height: 8),
                     ],
-                    FilledButton(
-                      onPressed: state.isBusy ? null : cubit.save,
-                      child: _buttonChild(state),
-                    ),
+                    if (state.isEditing)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              key: const Key('delete-dish-button'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.dangerRed,
+                                backgroundColor: AppTheme.dangerBg,
+                                minimumSize: const Size(0, 52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed: state.isBusy
+                                  ? null
+                                  : () => _delete(context),
+                              child: const _IconText(
+                                icon: Icons.delete_rounded,
+                                text: 'Delete',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(child: _saveButton(state, cubit)),
+                        ],
+                      )
+                    else
+                      _saveButton(state, cubit),
                   ],
                 ),
               ),
@@ -246,6 +266,20 @@ class _DishFormViewState extends State<DishFormView> {
     );
   }
 
+  Widget _saveButton(DishFormState state, DishFormCubit cubit) {
+    return FilledButton(
+      // The app theme makes FilledButton full width, so we set a size.
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 52),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      onPressed: state.isBusy ? null : cubit.save,
+      child: _buttonChild(state),
+    );
+  }
+
   Widget _buttonChild(DishFormState state) {
     if (state.isUploading) {
       return Text('Uploading ${(state.uploadProgress * 100).round()}%');
@@ -257,7 +291,9 @@ class _DishFormViewState extends State<DishFormView> {
         child: CircularProgressIndicator(strokeWidth: 2.5),
       );
     }
-    return Text(state.isEditing ? 'Save changes' : 'Add dish');
+    return state.isEditing
+        ? const _IconText(icon: Icons.check_rounded, text: 'Save')
+        : const _IconText(icon: Icons.add_rounded, text: 'Add dish');
   }
 
   void _showWait(BuildContext context) {
@@ -297,7 +333,7 @@ class _DishFormViewState extends State<DishFormView> {
             // The app theme makes FilledButton full width, so we set a size.
             style: FilledButton.styleFrom(
               minimumSize: const Size(88, 40),
-              backgroundColor: Colors.red.shade700,
+              backgroundColor: AppTheme.dangerRed,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Delete'),
@@ -309,8 +345,8 @@ class _DishFormViewState extends State<DishFormView> {
   }
 }
 
-// The photo, with Choose or Change photo and Remove photo.
-// Public, so tests can find it.
+// The dish photo, like the Profile cover: a camera and a bin on it,
+// or "Add a photo" when empty. Public, so tests can find it.
 class DishPhotoBox extends StatelessWidget {
   const DishPhotoBox({
     super.key,
@@ -330,57 +366,268 @@ class DishPhotoBox extends StatelessWidget {
     final busy = state.isBusy;
     final path = state.photoPath;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            key: const Key('dish-photo-box'),
-            onTap: busy ? null : onPick,
-            child: path == null
-                ? FoodImage(
-                    imageUrl: state.photoUrl,
-                    width: double.infinity,
-                    height: height,
-                    iconSize: 48,
-                  )
-                : Image.file(
-                    File(path),
-                    key: const Key('picked-photo'),
-                    width: double.infinity,
-                    height: height,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const FoodImage(
-                      imageUrl: '',
-                      width: double.infinity,
-                      height: height,
-                      iconSize: 48,
-                    ),
+    final Widget picture;
+    if (path != null) {
+      picture = Image.file(
+        File(path),
+        key: const Key('picked-photo'),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const _AddPhotoBox(),
+      );
+    } else if (state.photoUrl.isNotEmpty) {
+      picture = FoodImage(
+        imageUrl: state.photoUrl,
+        width: double.infinity,
+        height: height,
+        borderRadius: 0,
+        iconSize: 48,
+      );
+    } else {
+      picture = const _AddPhotoBox();
+    }
+
+    return SizedBox(
+      height: height,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Semantics(
+            button: true,
+            label: state.hasPhoto ? 'Change photo' : 'Add a photo',
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                key: const Key('dish-photo-box'),
+                onTap: busy ? null : onPick,
+                child: picture,
+              ),
+            ),
+          ),
+          // Hidden while saving, so the photo can't change halfway.
+          if (state.hasPhoto && !busy)
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _CircleButton(
+                    key: const Key('dish-remove-photo'),
+                    icon: Icons.delete_rounded,
+                    color: AppTheme.dangerRed,
+                    label: 'Remove photo',
+                    onTap: onRemove,
                   ),
+                  const SizedBox(width: 8),
+                  _CircleButton(
+                    key: const Key('dish-change-photo'),
+                    icon: Icons.photo_camera_rounded,
+                    color: AppTheme.brandOrange,
+                    label: 'Change photo',
+                    onTap: onPick,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// Soft orange box with a camera, when there is no photo yet.
+class _AddPhotoBox extends StatelessWidget {
+  const _AddPhotoBox();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: AppTheme.softOrange,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.add_a_photo_rounded,
+            size: 36,
+            color: AppTheme.brandOrange,
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Add a photo',
+            style: TextStyle(
+              color: AppTheme.deepOrange,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// A white round button on the photo.
+class _CircleButton extends StatelessWidget {
+  const _CircleButton({
+    super.key,
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icon, size: 22, color: color),
           ),
         ),
-        const SizedBox(height: 8),
-        // Wrap, not Row, so long button text never overflows.
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            OutlinedButton.icon(
-              onPressed: busy ? null : onPick,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: Text(state.hasPhoto ? 'Change photo' : 'Choose photo'),
-            ),
-            if (state.hasPhoto)
-              TextButton.icon(
-                onPressed: busy ? null : onRemove,
-                icon: const Icon(Icons.hide_image_outlined),
-                label: const Text('Remove photo'),
+      ),
+    );
+  }
+}
+
+// An orange rounded icon at the start of a text box.
+class _FieldIcon extends StatelessWidget {
+  const _FieldIcon(this.icon);
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(icon, color: AppTheme.brandOrange);
+  }
+}
+
+// A category chip: orange when it matches the box, else grey.
+// Public, so tests can find it.
+class CategoryChip extends StatelessWidget {
+  const CategoryChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  static const Color grey = Color(0xFFF2F2F2);
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: selected,
+      child: Material(
+        color: selected ? AppTheme.brandOrange : grey,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : AppTheme.textMuted,
+                fontWeight: FontWeight.w700,
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// "Available" in a white card, like the Open card on Profile.
+class _AvailableCard extends StatelessWidget {
+  const _AvailableCard({required this.available, required this.onChanged});
+
+  final bool available;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppTheme.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+        child: Row(
+          children: [
+            const SectionIcon(icon: Icons.check_circle_rounded),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Available',
+                    style: TextStyle(
+                      color: AppTheme.textDark,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    available
+                        ? 'Customers can order it.'
+                        : 'Customers cannot order it.',
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(value: available, onChanged: onChanged),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// An icon and a word that shrinks with "..." on big fonts.
+class _IconText extends StatelessWidget {
+  const _IconText({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
       ],
     );

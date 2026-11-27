@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:ada_rasa_foods/core/errors/data_failure.dart';
 import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/core/widgets/photo_confirm_sheet.dart';
-import 'package:ada_rasa_foods/core/widgets/round_icon_button.dart';
 import 'package:ada_rasa_foods/features/menu/domain/dish.dart';
 import 'package:ada_rasa_foods/features/menu/domain/image_uploader.dart';
 import 'package:ada_rasa_foods/features/menu/domain/menu_repository.dart';
@@ -108,6 +107,18 @@ void main() {
 
   Finder saveButton(String text) => find.widgetWithText(FilledButton, text);
 
+  Finder deleteButton() => find.byKey(const Key('delete-dish-button'));
+  Finder photoBox() => find.byKey(const Key('dish-photo-box'));
+  Finder changePhoto() => find.byKey(const Key('dish-change-photo'));
+  Finder removePhoto() => find.byKey(const Key('dish-remove-photo'));
+
+  Future<void> tapDelete(WidgetTester tester) async {
+    await tester.ensureVisible(deleteButton());
+    await tester.pumpAndSettle();
+    await tester.tap(deleteButton());
+    await tester.pumpAndSettle();
+  }
+
   // Text fields have their own Scrollable, so we name the page list.
   Future<void> scrollTo(WidgetTester tester, Finder finder) async {
     await tester.scrollUntilVisible(
@@ -126,9 +137,9 @@ void main() {
     await tester.pump();
   }
 
-  // Choose photo, then Use photo in the sheet.
+  // Tap the empty photo box, then Use photo in the sheet.
   Future<void> choosePhoto(WidgetTester tester) async {
-    await tester.tap(find.text('Choose photo'));
+    await tester.tap(photoBox());
     await tester.pumpAndSettle();
     await tester.tap(find.text('Use photo'));
     await tester.pumpAndSettle();
@@ -152,7 +163,7 @@ void main() {
 
     expect(find.widgetWithText(AppBar, 'Add dish'), findsOneWidget);
     expect(saveButton('Add dish'), findsOneWidget);
-    expect(find.byTooltip('Delete dish'), findsNothing);
+    expect(deleteButton(), findsNothing);
     expect(textOf(tester, 'Dish name'), '');
   });
 
@@ -160,8 +171,8 @@ void main() {
     await openForm(tester, dish: kottu);
 
     expect(find.widgetWithText(AppBar, 'Edit dish'), findsOneWidget);
-    expect(saveButton('Save changes'), findsOneWidget);
-    expect(find.byTooltip('Delete dish'), findsOneWidget);
+    expect(saveButton('Save'), findsOneWidget);
+    expect(deleteButton(), findsOneWidget);
     expect(textOf(tester, 'Dish name'), 'Chicken Kottu');
     expect(textOf(tester, 'Price'), '1200');
     expect(textOf(tester, 'Category'), 'Kottu');
@@ -190,13 +201,63 @@ void main() {
 
   testWidgets('a category chip fills the category', (tester) async {
     await openForm(tester);
-    final chip = find.widgetWithText(ActionChip, 'Drinks');
+    final chip = find.widgetWithText(CategoryChip, 'Drinks');
     await scrollTo(tester, chip);
 
     await tester.tap(chip);
     await tester.pumpAndSettle();
 
     expect(textOf(tester, 'Category'), 'Drinks');
+  });
+
+  testWidgets('the chip that matches the box is orange', (tester) async {
+    await openForm(tester, dish: kottu);
+
+    CategoryChip chip(String label) =>
+        tester.widget<CategoryChip>(find.widgetWithText(CategoryChip, label));
+    expect(chip('Kottu').selected, isTrue);
+    expect(chip('Drinks').selected, isFalse);
+
+    final kottuChip = find.widgetWithText(CategoryChip, 'Kottu');
+    final material = tester.widget<Material>(
+      find.descendant(of: kottuChip, matching: find.byType(Material)).first,
+    );
+    expect(material.color, AppTheme.brandOrange);
+
+    await tester.enterText(field('Category'), 'Drinks');
+    await tester.pumpAndSettle();
+
+    expect(chip('Kottu').selected, isFalse);
+    expect(chip('Drinks').selected, isTrue);
+  });
+
+  testWidgets('every text box has an orange icon', (tester) async {
+    await openForm(tester);
+
+    for (final icon in [
+      Icons.restaurant_rounded,
+      Icons.notes_rounded,
+      Icons.sell_rounded,
+      Icons.category_rounded,
+    ]) {
+      expect(tester.widget<Icon>(find.byIcon(icon)).color,
+          AppTheme.brandOrange);
+    }
+  });
+
+  testWidgets('the Available card switch turns the dish off',
+      (tester) async {
+    await openForm(tester);
+    final toggle = find.byType(Switch);
+    await scrollTo(tester, toggle);
+
+    expect(find.text('Customers can order it.'), findsOneWidget);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Switch>(toggle).value, isFalse);
+    expect(find.text('Customers cannot order it.'), findsOneWidget);
   });
 
   testWidgets('a filled form adds the dish and closes', (tester) async {
@@ -255,8 +316,7 @@ void main() {
   testWidgets('Cancel keeps the dish', (tester) async {
     await openForm(tester, dish: kottu);
 
-    await tester.tap(find.byTooltip('Delete dish'));
-    await tester.pumpAndSettle();
+    await tapDelete(tester);
     expect(find.text('Delete Chicken Kottu?'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
@@ -268,8 +328,7 @@ void main() {
   testWidgets('Delete asks, deletes, and closes', (tester) async {
     await openForm(tester, dish: kottu);
 
-    await tester.tap(find.byTooltip('Delete dish'));
-    await tester.pumpAndSettle();
+    await tapDelete(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
     await tester.pumpAndSettle();
 
@@ -278,38 +337,34 @@ void main() {
     expect(find.text('Chicken Kottu is deleted.'), findsOneWidget);
   });
 
-  testWidgets('Delete is a soft red round button', (tester) async {
+  testWidgets('Delete is a soft red button next to Save',
+      (tester) async {
     await openForm(tester, dish: kottu);
 
-    final circle = find.descendant(
-      of: find.byTooltip('Delete dish'),
-      matching: find.byType(RoundIconCircle),
-    );
-    expect(circle, findsOneWidget);
-    expect(tester.widget<RoundIconCircle>(circle).style,
-        RoundIconStyle.danger);
+    final button = tester.widget<TextButton>(deleteButton());
+    final style = button.style!;
+    expect(style.backgroundColor?.resolve({}), AppTheme.dangerBg);
+    expect(style.foregroundColor?.resolve({}), AppTheme.dangerRed);
+    expect(find.byIcon(Icons.delete_rounded), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Edit dish'), findsOneWidget);
 
-    final icon = tester.widget<Icon>(find.byIcon(Icons.delete_rounded));
-    expect(icon.color, AppTheme.dangerRed);
-    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    final deleteBox = tester.getRect(deleteButton());
+    final saveBox = tester.getRect(saveButton('Save'));
+    expect(deleteBox.center.dy, saveBox.center.dy);
+    expect(deleteBox.left, lessThan(saveBox.left));
   });
 
-  testWidgets('Delete is faded and does nothing while saving',
-      (tester) async {
+  testWidgets('Delete is locked while saving', (tester) async {
     final done = Completer<void>();
     when(() => repository.updateDish(any())).thenAnswer((_) => done.future);
     await openForm(tester, dish: kottu);
 
-    await tester.tap(saveButton('Save changes'));
+    await tester.tap(saveButton('Save'));
     await tester.pump();
 
-    final fade = find.descendant(
-      of: find.byTooltip('Delete dish'),
-      matching: find.byType(Opacity),
-    );
-    expect(fade, findsOneWidget);
+    expect(tester.widget<TextButton>(deleteButton()).onPressed, isNull);
 
-    await tester.tap(find.byTooltip('Delete dish'));
+    await tester.tap(deleteButton(), warnIfMissed: false);
     await tester.pump();
     expect(find.text('Delete Chicken Kottu?'), findsNothing);
     verifyNever(() => repository.deleteDish(any()));
@@ -319,28 +374,44 @@ void main() {
   });
 
   group('photo', () {
-    testWidgets('a new dish shows Choose photo and no Remove photo',
+    testWidgets('a new dish shows Add a photo and no round buttons',
         (tester) async {
       await openForm(tester);
 
       expect(find.byType(DishPhotoBox), findsOneWidget);
-      expect(find.text('Choose photo'), findsOneWidget);
-      expect(find.text('Remove photo'), findsNothing);
+      expect(find.text('Add a photo'), findsOneWidget);
+      expect(changePhoto(), findsNothing);
+      expect(removePhoto(), findsNothing);
       expect(find.byKey(const Key('picked-photo')), findsNothing);
     });
 
-    testWidgets('a dish with a photo shows Change and Remove photo',
+    testWidgets('a dish with a photo shows the camera and the bin',
         (tester) async {
       await openForm(tester, dish: kottuWithPhoto);
 
-      expect(find.text('Change photo'), findsOneWidget);
-      expect(find.text('Remove photo'), findsOneWidget);
+      expect(find.text('Add a photo'), findsNothing);
+      expect(changePhoto(), findsOneWidget);
+      expect(removePhoto(), findsOneWidget);
+      final bin = tester.widget<Icon>(
+        find.descendant(of: removePhoto(), matching: find.byType(Icon)),
+      );
+      expect(bin.color, AppTheme.dangerRed);
     });
 
-    testWidgets('Choose photo shows the sheet first', (tester) async {
+    testWidgets('the camera button opens the gallery', (tester) async {
+      await openForm(tester, dish: kottuWithPhoto);
+
+      await tester.tap(changePhoto());
+      await tester.pumpAndSettle();
+
+      verify(() => picker.pickFromGallery()).called(1);
+      expect(find.byType(PhotoConfirmSheet), findsOneWidget);
+    });
+
+    testWidgets('the photo shows the sheet first', (tester) async {
       await openForm(tester);
 
-      await tester.tap(find.text('Choose photo'));
+      await tester.tap(photoBox());
       await tester.pumpAndSettle();
 
       expect(find.byType(PhotoConfirmSheet), findsOneWidget);
@@ -351,26 +422,26 @@ void main() {
     testWidgets('Cancel in the sheet adds no photo', (tester) async {
       await openForm(tester);
 
-      await tester.tap(find.text('Choose photo'));
+      await tester.tap(photoBox());
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
       expect(find.byType(PhotoConfirmSheet), findsNothing);
       expect(find.byKey(const Key('picked-photo')), findsNothing);
-      expect(find.text('Choose photo'), findsOneWidget);
-      expect(find.text('Remove photo'), findsNothing);
+      expect(find.text('Add a photo'), findsOneWidget);
+      expect(removePhoto(), findsNothing);
     });
 
-    testWidgets('Choose photo shows the preview and Remove photo',
+    testWidgets('Use photo shows the preview and the round buttons',
         (tester) async {
       await openForm(tester);
 
       await choosePhoto(tester);
 
       expect(find.byKey(const Key('picked-photo')), findsOneWidget);
-      expect(find.text('Change photo'), findsOneWidget);
-      expect(find.text('Remove photo'), findsOneWidget);
+      expect(changePhoto(), findsOneWidget);
+      expect(removePhoto(), findsOneWidget);
       verifyNever(
         () => uploader.upload(any(), onProgress: any(named: 'onProgress')),
       );
@@ -380,7 +451,7 @@ void main() {
         (tester) async {
       await openForm(tester);
 
-      await tester.tap(find.byKey(const Key('dish-photo-box')));
+      await tester.tap(photoBox());
       await tester.pumpAndSettle();
       await tester.tap(find.text('Use photo'));
       await tester.pumpAndSettle();
@@ -389,14 +460,16 @@ void main() {
       expect(find.byKey(const Key('picked-photo')), findsOneWidget);
     });
 
-    testWidgets('Remove photo takes the photo away', (tester) async {
+    testWidgets('the bin takes the photo away, with no question',
+        (tester) async {
       await openForm(tester, dish: kottuWithPhoto);
 
-      await tester.tap(find.text('Remove photo'));
+      await tester.tap(removePhoto());
       await tester.pumpAndSettle();
 
-      expect(find.text('Remove photo'), findsNothing);
-      expect(find.text('Choose photo'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(removePhoto(), findsNothing);
+      expect(find.text('Add a photo'), findsOneWidget);
     });
 
     testWidgets('a gallery error shows the reason', (tester) async {
@@ -405,7 +478,7 @@ void main() {
       );
       await openForm(tester);
 
-      await tester.tap(find.text('Choose photo'));
+      await tester.tap(photoBox());
       await tester.pumpAndSettle();
 
       expect(find.byType(PhotoConfirmSheet), findsNothing);
@@ -428,11 +501,10 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.text('Uploading 45%'), findsOneWidget);
       expect(tester.widget<TextField>(field('Dish name')).enabled, isFalse);
-      // OutlinedButton.icon is a subclass, so byType would miss it.
-      final photoButton = tester.widget<OutlinedButton>(
-        find.byWidgetPredicate((widget) => widget is OutlinedButton),
-      );
-      expect(photoButton.onPressed, isNull);
+      expect(changePhoto(), findsNothing);
+      expect(removePhoto(), findsNothing);
+      final box = tester.widget<InkWell>(photoBox());
+      expect(box.onTap, isNull);
 
       upload.done.complete(newUrl);
       await tester.pumpAndSettle();
