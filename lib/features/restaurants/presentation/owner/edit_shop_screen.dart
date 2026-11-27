@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/domain/phone_checks.dart';
 import '../../domain/restaurant.dart';
 import 'edit_shop_cubit.dart';
 
@@ -107,9 +108,11 @@ class _EditShopViewState extends State<EditShopView> {
                   controller: _phone,
                   enabled: !busy,
                   keyboardType: TextInputType.phone,
-                  // Only numbers, spaces and dashes can be typed.
+                  // Only numbers, spaces and dashes, and at most 10 digits,
+                  // can be typed. Sri Lankan numbers have 10 digits.
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9 \-]')),
+                    const _MaxDigitsFormatter(PhoneChecks.length),
                     LengthLimitingTextInputFormatter(13),
                   ],
                   decoration: InputDecoration(
@@ -185,6 +188,23 @@ class _EditShopViewState extends State<EditShopView> {
         );
       },
     );
+  }
+}
+
+// Blocks a key press that would make more than maxDigits digits.
+// Spaces and dashes don't count, so "071 234 5678" fits.
+class _MaxDigitsFormatter extends TextInputFormatter {
+  const _MaxDigitsFormatter(this.maxDigits);
+
+  final int maxDigits;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = PhoneChecks.digitsOnly(newValue.text).length;
+    return digits > maxDigits ? oldValue : newValue;
   }
 }
 

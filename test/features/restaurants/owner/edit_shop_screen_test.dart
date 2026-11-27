@@ -153,6 +153,27 @@ void main() {
     expect(textOf(tester, 'Phone (optional)'), '071-2 3');
   });
 
+  testWidgets('the phone box stops at 10 digits', (tester) async {
+    await openPage(tester);
+    await tester.enterText(field('Phone (optional)'), '0712345678');
+    await tester.pump();
+
+    await tester.enterText(field('Phone (optional)'), '07123456789');
+    await tester.pump();
+
+    expect(textOf(tester, 'Phone (optional)'), '0712345678');
+  });
+
+  testWidgets('spaces do not count, so a grouped number fits',
+      (tester) async {
+    await openPage(tester);
+
+    await tester.enterText(field('Phone (optional)'), '077 111 2222');
+    await tester.pump();
+
+    expect(textOf(tester, 'Phone (optional)'), '077 111 2222');
+  });
+
   testWidgets('the description stops at 150 letters', (tester) async {
     await openPage(tester);
 
