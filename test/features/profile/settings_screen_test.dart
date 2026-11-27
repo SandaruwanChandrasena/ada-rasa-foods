@@ -1,6 +1,6 @@
 import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/core/widgets/section_card.dart';
-import 'package:ada_rasa_foods/features/payments/presentation/mini_card.dart';
+import 'package:ada_rasa_foods/features/payments/presentation/cards/mini_card.dart';
 import 'package:ada_rasa_foods/features/profile/domain/settings_repository.dart';
 import 'package:ada_rasa_foods/features/profile/presentation/reduce_animations_cubit.dart';
 import 'package:ada_rasa_foods/features/profile/presentation/settings_screen.dart';

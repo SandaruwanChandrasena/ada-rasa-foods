@@ -26,18 +26,18 @@ import '../../features/orders/data/order_repository_impl.dart';
 import '../../features/orders/data/seen_order_repository_impl.dart';
 import '../../features/orders/domain/order_repository.dart';
 import '../../features/orders/domain/seen_order_repository.dart';
-import '../../features/orders/presentation/my_orders_cubit.dart';
-import '../../features/orders/presentation/restaurant_orders_cubit.dart';
+import '../../features/orders/presentation/my_orders/my_orders_cubit.dart';
+import '../../features/orders/presentation/board/restaurant_orders_cubit.dart';
 import '../../features/payments/data/card_repository_impl.dart';
 import '../../features/payments/domain/card_repository.dart';
-import '../../features/payments/presentation/cards_cubit.dart';
+import '../../features/payments/presentation/cards/cards_cubit.dart';
 import '../../features/profile/data/settings_repository_impl.dart';
 import '../../features/profile/domain/settings_repository.dart';
 import '../../features/profile/presentation/reduce_animations_cubit.dart';
 import '../../features/restaurants/data/restaurant_repository_impl.dart';
 import '../../features/restaurants/domain/restaurant_repository.dart';
-import '../../features/restaurants/presentation/my_restaurant_cubit.dart';
-import '../../features/restaurants/presentation/restaurant_list_cubit.dart';
+import '../../features/restaurants/presentation/owner/my_restaurant_cubit.dart';
+import '../../features/restaurants/presentation/home/restaurant_list_cubit.dart';
 import '../router/app_router.dart';
 
 // sl = service locator. One place that creates and connects everything.

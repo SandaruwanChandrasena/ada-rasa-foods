@@ -7,7 +7,7 @@ import '../../../core/widgets/section_card.dart';
 import '../../payments/domain/card_brand.dart';
 import '../../payments/domain/card_checks.dart';
 import '../../payments/domain/payment_card.dart';
-import '../../payments/presentation/mini_card.dart';
+import '../../payments/presentation/cards/mini_card.dart';
 import 'reduce_animations_cubit.dart';
 
 // Keep in step with "version" in pubspec.yaml.

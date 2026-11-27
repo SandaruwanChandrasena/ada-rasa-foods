@@ -1,8 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../features/orders/presentation/my_orders_cubit.dart';
-import '../../features/orders/presentation/my_orders_state.dart';
+import '../../features/orders/presentation/my_orders/my_orders_cubit.dart';
+import '../../features/orders/presentation/my_orders/my_orders_state.dart';
 import '../widgets/customer_bottom_bar.dart';
 import 'tab_scroll.dart';
 
