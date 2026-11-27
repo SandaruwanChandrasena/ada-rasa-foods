@@ -38,11 +38,24 @@ const withPhoto = Restaurant(
   imageUrl: 'https://example.com/shop.jpg',
 );
 
+const withDetails = Restaurant(
+  id: 'r1',
+  name: 'Kottu Corner',
+  cuisine: 'Sri Lankan',
+  ownerId: 'o1',
+  address: 'Colombo',
+  latitude: 6.9,
+  longitude: 79.8,
+  phone: '0712345678',
+  description: 'Best kottu in town.',
+);
+
 const pickedPath = '/cache/shop.jpg';
 
 void main() {
   late MockMyRestaurantCubit myRestaurant;
   late MockRestaurantPhotoCubit photo;
+  late List<Restaurant> editOpened;
 
   // any() needs a sample value for the confirm function type.
   setUpAll(() {
@@ -53,6 +66,7 @@ void main() {
   setUp(() {
     myRestaurant = MockMyRestaurantCubit();
     photo = MockRestaurantPhotoCubit();
+    editOpened = [];
     when(() => photo.state).thenReturn(const RestaurantPhotoState());
     when(
       () => photo.pickAndUpload(confirm: any(named: 'confirm')),
@@ -83,8 +97,14 @@ void main() {
           BlocProvider<MyRestaurantCubit>.value(value: myRestaurant),
           BlocProvider<RestaurantPhotoCubit>.value(value: photo),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: RestaurantPhotoCard()),
+        child: MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: RestaurantPhotoCard(
+                onEditShop: (_, restaurant) => editOpened.add(restaurant),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -94,6 +114,11 @@ void main() {
   Finder photoBox() => find.byKey(const Key('restaurant-photo-box'));
   Finder removeButton() => find.byKey(const Key('remove-photo-button'));
   Finder changeButton() => find.byKey(const Key('change-photo-button'));
+  Finder editButton() => find.byKey(const Key('edit-shop-button'));
+
+  InkWell tapArea(WidgetTester tester, Finder button) => tester.widget<InkWell>(
+        find.descendant(of: button, matching: find.byType(InkWell)),
+      );
 
   testWidgets('shows nothing until the restaurant loads', (tester) async {
     await show(tester);
@@ -103,7 +128,7 @@ void main() {
     expect(find.text('Kottu Corner'), findsNothing);
   });
 
-  testWidgets('no photo: Add a photo, and no round buttons',
+  testWidgets('no photo: Add a photo, and no photo buttons',
       (tester) async {
     await show(tester, restaurant: noPhoto);
 
@@ -113,30 +138,37 @@ void main() {
     expect(changeButton(), findsNothing);
   });
 
-  testWidgets('a photo: camera and bin buttons on it', (tester) async {
-    await show(tester, restaurant: withPhoto);
-
-    expect(find.text('Add a photo'), findsNothing);
-    expect(changeButton(), findsOneWidget);
-    expect(removeButton(), findsOneWidget);
-  });
-
-  testWidgets('the bin is red and the camera orange, on white',
+  testWidgets('a photo: Remove and Change photo sit under it',
       (tester) async {
     await show(tester, restaurant: withPhoto);
 
-    final bin = tester.widget<Icon>(
-      find.descendant(of: removeButton(), matching: find.byType(Icon)),
-    );
-    final camera = tester.widget<Icon>(
-      find.descendant(of: changeButton(), matching: find.byType(Icon)),
-    );
-    expect(bin.color, AppTheme.dangerRed);
-    expect(camera.color, AppTheme.brandOrange);
-    final circle = tester.widget<Material>(
-      find.descendant(of: removeButton(), matching: find.byType(Material)),
-    );
-    expect(circle.color, Colors.white);
+    expect(find.text('Add a photo'), findsNothing);
+    expect(find.text('Remove'), findsOneWidget);
+    expect(find.text('Change photo'), findsOneWidget);
+    final photoBottom = tester.getRect(photoBox()).bottom;
+    expect(tester.getRect(changeButton()).top, greaterThan(photoBottom));
+    expect(tester.getRect(removeButton()).top, greaterThan(photoBottom));
+  });
+
+  testWidgets('Remove is soft red and Change photo soft orange',
+      (tester) async {
+    await show(tester, restaurant: withPhoto);
+
+    Color? background(Finder button) => tester
+        .widget<Material>(
+          find.descendant(of: button, matching: find.byType(Material)).first,
+        )
+        .color;
+    Color? iconColor(Finder button) => tester
+        .widget<Icon>(
+          find.descendant(of: button, matching: find.byType(Icon)),
+        )
+        .color;
+
+    expect(background(removeButton()), AppTheme.dangerBg);
+    expect(iconColor(removeButton()), AppTheme.dangerRed);
+    expect(background(changeButton()), AppTheme.softOrange);
+    expect(iconColor(changeButton()), AppTheme.deepOrange);
   });
 
   testWidgets('the cover is 180 high', (tester) async {
@@ -150,6 +182,33 @@ void main() {
 
     expect(find.text('Kottu Corner'), findsOneWidget);
     expect(find.text('Sri Lankan · Colombo'), findsOneWidget);
+  });
+
+  testWidgets('the Edit pill opens Edit shop for this shop', (tester) async {
+    await show(tester, restaurant: noPhoto);
+
+    expect(find.text('Edit'), findsOneWidget);
+    await tester.tap(editButton());
+    await tester.pump();
+
+    expect(editOpened, [noPhoto]);
+  });
+
+  testWidgets('shows the phone in groups and the description',
+      (tester) async {
+    await show(tester, restaurant: withDetails);
+
+    expect(find.text('071 234 5678'), findsOneWidget);
+    expect(find.byIcon(Icons.phone_rounded), findsOneWidget);
+    expect(find.text('Best kottu in town.'), findsOneWidget);
+  });
+
+  testWidgets('no phone line and no description when empty',
+      (tester) async {
+    await show(tester, restaurant: noPhoto);
+
+    expect(find.byIcon(Icons.phone_rounded), findsNothing);
+    expect(find.text('Best kottu in town.'), findsNothing);
   });
 
   testWidgets('a very long name does not overflow', (tester) async {
@@ -227,8 +286,9 @@ void main() {
     expect(find.byKey(const Key('restaurant-picked-photo')), findsOneWidget);
     expect(find.text('Uploading 45%'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    expect(changeButton(), findsNothing);
-    expect(removeButton(), findsNothing);
+    // The pills stay, so nothing jumps, but they can't be tapped.
+    expect(tapArea(tester, changeButton()).onTap, isNull);
+    expect(tapArea(tester, removeButton()).onTap, isNull);
   });
 
   testWidgets('saving shows Saving and blocks the photo tap',
@@ -239,12 +299,15 @@ void main() {
     await show(tester, restaurant: withPhoto);
 
     expect(find.text('Saving...'), findsOneWidget);
-    expect(changeButton(), findsNothing);
 
     await tester.tap(photoBox(), warnIfMissed: false);
-    await tester.pump();
+    await tester.tap(changeButton());
+    await tester.tap(removeButton());
+    // The Saving spinner never settles, so we pump a fixed time.
+    await tester.pump(const Duration(milliseconds: 500));
 
     verifyNever(() => photo.pickAndUpload(confirm: any(named: 'confirm')));
+    expect(find.text('Remove the restaurant photo?'), findsNothing);
   });
 
   testWidgets('the bin asks first, and Cancel keeps the photo',
