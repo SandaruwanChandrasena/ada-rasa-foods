@@ -84,10 +84,15 @@ class OwnerDashboardCubit extends Cubit<OwnerDashboardState> {
     final endedToday = _endedToday;
     if (open == null || endedToday == null || isClosed) return;
 
+    final now = _now();
     emit(
       OwnerDashboardState(
         view: DashboardView.loaded,
-        summary: DaySummary.from(open: open, endedToday: endedToday),
+        summary: DaySummary.from(
+          open: open,
+          ended: endedToday,
+          since: DateTime(now.year, now.month, now.day),
+        ),
       ),
     );
   }

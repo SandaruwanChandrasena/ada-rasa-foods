@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../orders/domain/food_order.dart';
 import '../../orders/domain/order_status.dart';
 
-// One dish and how many were sold today.
+// One dish and how many were sold.
 class TopDish extends Equatable {
   const TopDish({
     required this.dishId,
@@ -21,7 +21,10 @@ class TopDish extends Equatable {
   List<Object?> get props => [dishId, name, quantity, imageUrl];
 }
 
-// The owner's numbers for today (owner dashboard).
+const _soldStatuses = {OrderStatus.completed, OrderStatus.delivered};
+const _droppedStatuses = {OrderStatus.rejected, OrderStatus.cancelled};
+
+// The owner's numbers for one period (owner dashboard).
 class DaySummary extends Equatable {
   const DaySummary({
     this.sales = 0,
@@ -33,32 +36,28 @@ class DaySummary extends Equatable {
   });
 
   // [open]: every order still going, from any day.
-  // [endedToday]: ended orders placed today, newest first.
+  // [ended]: ended orders, newest first. Only those placed at or
+  // after [since] count.
   factory DaySummary.from({
     required List<FoodOrder> open,
-    required List<FoodOrder> endedToday,
+    required List<FoodOrder> ended,
+    required DateTime since,
+    int maxTopDishes = 3,
   }) {
-    final sold = endedToday.where((o) => _soldStatuses.contains(o.status));
+    final inPeriod = ended.where((o) => _placedSince(o, since)).toList();
+    final sold = inPeriod.where((o) => _soldStatuses.contains(o.status));
 
     return DaySummary(
       sales: sold.fold(0, (sum, order) => sum + order.total),
       doneCount: sold.length,
       newCount: open.where((o) => o.status == OrderStatus.placed).length,
       activeCount: open.where((o) => o.status != OrderStatus.placed).length,
-      droppedCount: endedToday
+      droppedCount: inPeriod
           .where((o) => _droppedStatuses.contains(o.status))
           .length,
-      topDishes: _topDishes(sold),
+      topDishes: _topDishes(sold, maxTopDishes),
     );
   }
-
-  static const int maxTopDishes = 3;
-
-  static const _soldStatuses = {OrderStatus.completed, OrderStatus.delivered};
-  static const _droppedStatuses = {
-    OrderStatus.rejected,
-    OrderStatus.cancelled,
-  };
 
   // Whole rupees from completed orders only.
   final int sales;
@@ -66,13 +65,19 @@ class DaySummary extends Equatable {
   final int newCount;
   final int activeCount;
 
-  // Rejected or cancelled today.
+  // Rejected or cancelled in the period.
   final int droppedCount;
 
-  // Most sold first. At most [maxTopDishes].
+  // Most sold first.
   final List<TopDish> topDishes;
 
-  static List<TopDish> _topDishes(Iterable<FoodOrder> sold) {
+  // An ended order always has a time. If not yet, it counts as now.
+  static bool _placedSince(FoodOrder order, DateTime since) {
+    final placedAt = order.placedAt;
+    return placedAt == null || !placedAt.isBefore(since);
+  }
+
+  static List<TopDish> _topDishes(Iterable<FoodOrder> sold, int max) {
     final byId = <String, TopDish>{};
     for (final order in sold) {
       for (final item in order.items) {
@@ -94,7 +99,7 @@ class DaySummary extends Equatable {
         final byQuantity = b.quantity.compareTo(a.quantity);
         return byQuantity != 0 ? byQuantity : a.name.compareTo(b.name);
       });
-    return dishes.take(maxTopDishes).toList();
+    return dishes.take(max).toList();
   }
 
   @override
@@ -106,4 +111,24 @@ class DaySummary extends Equatable {
         droppedCount,
         topDishes,
       ];
+}
+
+// Sales of each of the last [days] days, oldest first, today last.
+// Completed orders only (the dashboard chart).
+List<int> salesByDay(List<FoodOrder> ended, DateTime now, {int days = 7}) {
+  final today = DateTime.utc(now.year, now.month, now.day);
+  final totals = List<int>.filled(days, 0);
+
+  for (final order in ended) {
+    final placedAt = order.placedAt;
+    if (placedAt == null || !_soldStatuses.contains(order.status)) continue;
+
+    // UTC dates, so a day is always 24 hours long.
+    final day = DateTime.utc(placedAt.year, placedAt.month, placedAt.day);
+    final daysAgo = today.difference(day).inDays;
+    if (daysAgo >= 0 && daysAgo < days) {
+      totals[days - 1 - daysAgo] += order.total;
+    }
+  }
+  return totals;
 }
