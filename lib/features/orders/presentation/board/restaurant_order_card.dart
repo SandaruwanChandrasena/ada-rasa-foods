@@ -2,8 +2,13 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/price_format.dart';
+import '../../../../core/widgets/food_image.dart';
+import '../../../../core/widgets/section_card.dart';
+import '../../../auth/domain/phone_checks.dart';
 import '../../domain/food_order.dart';
+import '../../domain/order_item.dart';
 import '../../domain/order_status.dart';
+import '../my_orders/my_orders_list.dart';
 
 // One order on the restaurant board, with its next step buttons.
 class RestaurantOrderCard extends StatelessWidget {
@@ -14,6 +19,10 @@ class RestaurantOrderCard extends StatelessWidget {
     required this.onMove,
     required this.onCall,
   });
+
+  // The yellow "Collect Rs. X" note, like the Add card note.
+  static const Color noteBg = Color(0xFFFFF4D6);
+  static const Color noteText = Color(0xFF7A5200);
 
   final FoodOrder order;
 
@@ -27,80 +36,76 @@ class RestaurantOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final grey = textTheme.bodySmall?.copyWith(color: Colors.grey.shade600);
-    final bold = textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700);
+    final collect = order.status == OrderStatus.ready && !order.isCard;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _Header(order: order),
+          const _Line(),
+          _Customer(order: order, onCall: onCall),
+          const _Line(),
+          for (final item in order.items) _ItemRow(item: item),
+          const _Line(),
           Row(
             children: [
-              Expanded(
-                child: Text('Order #${order.shortNumber}', style: bold),
-              ),
-              _StatusChip(order: order),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(timeAgo(context, order.placedAt), style: grey),
-          const Divider(height: 20),
-          Row(
-            children: [
-              const Icon(Icons.person_outline, size: 18),
-              const SizedBox(width: 6),
-              Expanded(child: Text(order.customerName)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.phone_outlined, size: 18),
-              const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  order.customerPhone.isEmpty
-                      ? 'No phone'
-                      : order.customerPhone,
-                  style: order.customerPhone.isEmpty ? grey : null,
+                  paymentText(order),
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 13,
+                  ),
                 ),
               ),
-              if (order.customerPhone.isNotEmpty)
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  onPressed: () => onCall(order.customerPhone),
-                  icon: const Icon(Icons.call, size: 18),
-                  label: const Text('Call'),
+              const SizedBox(width: 8),
+              Text(
+                formatPrice(order.total),
+                style: const TextStyle(
+                  color: AppTheme.brandOrange,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
                 ),
+              ),
             ],
           ),
-          const Divider(height: 20),
-          for (final item in order.items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text('${item.quantity} x ${item.name}'),
-            ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(child: Text(paymentText(order), style: grey)),
-              Text(formatPrice(order.total), style: bold),
-            ],
-          ),
-          if (order.status == OrderStatus.ready && !order.isCard) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Collect ${formatPrice(order.total)}',
-              style: bold?.copyWith(color: AppTheme.brandOrange),
+          if (collect) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: noteBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.payments_rounded,
+                    size: 20,
+                    color: noteText,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Collect ${formatPrice(order.total)}',
+                      style: const TextStyle(
+                        color: noteText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
           if (!order.status.isEnd) ...[
@@ -132,6 +137,194 @@ class RestaurantOrderCard extends StatelessWidget {
   }
 }
 
+class _Line extends StatelessWidget {
+  const _Line();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(height: 24, thickness: 1, color: AppTheme.border);
+  }
+}
+
+// Bag icon, "#ABCDEF", the time, and the status pill.
+class _Header extends StatelessWidget {
+  const _Header({required this.order});
+
+  final FoodOrder order;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SectionIcon(icon: Icons.shopping_bag_rounded, size: 36),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '#${order.shortNumber}',
+                style: const TextStyle(
+                  color: AppTheme.textDark,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                RestaurantOrderCard.timeAgo(context, order.placedAt),
+                style: const TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Flexible(child: OrderStatusPill(order: order)),
+      ],
+    );
+  }
+}
+
+// Name, phone, and a round orange call button.
+class _Customer extends StatelessWidget {
+  const _Customer({required this.order, required this.onCall});
+
+  final FoodOrder order;
+  final void Function(String phone) onCall;
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = order.customerPhone;
+
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: const BoxDecoration(
+            color: AppTheme.softOrange,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.person_rounded,
+            size: 20,
+            color: AppTheme.brandOrange,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                order.customerName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.textDark,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                phone.isEmpty ? 'No phone' : PhoneChecks.format(phone),
+                style: const TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (phone.isNotEmpty)
+          Semantics(
+            button: true,
+            label: 'Call',
+            excludeSemantics: true,
+            child: Material(
+              key: const Key('call-button'),
+              color: AppTheme.brandOrange,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => onCall(phone),
+                child: const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Icon(
+                    Icons.phone_rounded,
+                    size: 22,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// Photo, name, "× 2" and the line price.
+class _ItemRow extends StatelessWidget {
+  const _ItemRow({required this.item});
+
+  final OrderItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          FoodImage(
+            imageUrl: item.imageUrl,
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            iconSize: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              item.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppTheme.textDark,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppTheme.softOrange,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '× ${item.quantity}',
+              style: const TextStyle(
+                color: AppTheme.deepOrange,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            formatPrice(item.price * item.quantity),
+            style: const TextStyle(color: AppTheme.textDark),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Buttons extends StatelessWidget {
   const _Buttons({
     required this.order,
@@ -159,39 +352,46 @@ class _Buttons extends StatelessWidget {
       OrderStatus.placed => Row(
           children: [
             Expanded(
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade700,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.dangerRed,
+                  backgroundColor: AppTheme.dangerBg,
                   minimumSize: const Size(0, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 onPressed: () => _reject(context),
-                child: const Text('Reject'),
+                child: const _IconText(
+                  icon: Icons.close_rounded,
+                  text: 'Reject',
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: FilledButton(
-                // The app theme makes FilledButton full width.
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 48),
-                ),
+              child: _StepButton(
+                icon: Icons.check_rounded,
+                text: 'Accept',
                 onPressed: () => onMove(OrderStatus.accepted),
-                child: const Text('Accept'),
               ),
             ),
           ],
         ),
-      OrderStatus.accepted => FilledButton(
+      OrderStatus.accepted => _StepButton(
+          icon: Icons.soup_kitchen_rounded,
+          text: 'Start preparing',
           onPressed: () => onMove(OrderStatus.preparing),
-          child: const Text('Start preparing'),
         ),
-      OrderStatus.preparing => FilledButton(
+      OrderStatus.preparing => _StepButton(
+          icon: Icons.notifications_active_rounded,
+          text: 'Mark ready',
           onPressed: () => onMove(OrderStatus.ready),
-          child: const Text('Mark ready'),
         ),
-      OrderStatus.ready => FilledButton(
+      OrderStatus.ready => _StepButton(
+          icon: Icons.check_rounded,
+          text: 'Completed',
           onPressed: () => _complete(context),
-          child: const Text('Completed'),
         ),
       _ => const SizedBox.shrink(),
     };
@@ -251,7 +451,7 @@ class _Buttons extends StatelessWidget {
           FilledButton(
             style: FilledButton.styleFrom(
               minimumSize: const Size(88, 40),
-              backgroundColor: danger ? Colors.red.shade700 : null,
+              backgroundColor: danger ? AppTheme.dangerRed : null,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(yesText),
@@ -263,40 +463,52 @@ class _Buttons extends StatelessWidget {
   }
 }
 
-// Orange while going, green when completed, red when stopped.
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.order});
+// An orange step button with an icon, like "Accept" or "Mark ready".
+class _StepButton extends StatelessWidget {
+  const _StepButton({
+    required this.icon,
+    required this.text,
+    required this.onPressed,
+  });
 
-  final FoodOrder order;
+  final IconData icon;
+  final String text;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final (Color text, Color background) = switch (order.status) {
-      OrderStatus.completed || OrderStatus.delivered => (
-          Colors.green.shade800,
-          Colors.green.shade50,
+    return FilledButton(
+      // The app theme makes FilledButton full width, so we set a size.
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
-      OrderStatus.rejected || OrderStatus.cancelled => (
-          Colors.red.shade700,
-          Colors.red.shade50,
-        ),
-      _ => (AppTheme.brandOrange, const Color(0xFFFFF1EA)),
-    };
+      ),
+      onPressed: onPressed,
+      child: _IconText(icon: icon, text: text),
+    );
+  }
+}
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        order.statusLabel,
-        style: TextStyle(
-          color: text,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+// An icon and a word that shrinks with "..." on big fonts.
+class _IconText extends StatelessWidget {
+  const _IconText({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
-      ),
+      ],
     );
   }
 }

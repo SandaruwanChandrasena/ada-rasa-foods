@@ -283,11 +283,13 @@ void main() {
   testWidgets('a new order shows its details', (tester) async {
     await showBoard(tester, loaded(open: [order('abcdef1')]));
 
-    expect(find.text('Order #ABCDEF'), findsOneWidget);
+    expect(find.text('#ABCDEF'), findsOneWidget);
     expect(find.text('Nimal'), findsOneWidget);
-    expect(find.text('0712345678'), findsOneWidget);
-    expect(find.text('2 x Chicken Kottu'), findsOneWidget);
-    expect(find.text('Rs. 2,400'), findsOneWidget);
+    expect(find.text('071 234 5678'), findsOneWidget);
+    expect(find.text('Chicken Kottu'), findsOneWidget);
+    expect(find.text('× 2'), findsOneWidget);
+    // The line price and the total are both Rs. 2,400 here.
+    expect(find.text('Rs. 2,400'), findsNWidgets(2));
     expect(find.text('Cash, pay at pickup'), findsOneWidget);
   });
 
@@ -549,7 +551,7 @@ void main() {
   testWidgets('Call opens the phone app with the number', (tester) async {
     await showBoard(tester, loaded(open: [order('abcdef1')]));
 
-    await tester.tap(find.text('Call'));
+    await tester.tap(find.byKey(const Key('call-button')));
     await tester.pumpAndSettle();
 
     expect(calledPhones, ['0712345678']);
@@ -558,14 +560,14 @@ void main() {
   testWidgets('no Call button when there is no phone', (tester) async {
     await showBoard(tester, loaded(open: [order('abcdef1', phone: '')]));
 
-    expect(find.text('Call'), findsNothing);
+    expect(find.byKey(const Key('call-button')), findsNothing);
   });
 
   testWidgets('says so when the phone app cannot open', (tester) async {
     callWorks = false;
     await showBoard(tester, loaded(open: [order('abcdef1')]));
 
-    await tester.tap(find.text('Call'));
+    await tester.tap(find.byKey(const Key('call-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Could not open the phone app.'), findsOneWidget);
