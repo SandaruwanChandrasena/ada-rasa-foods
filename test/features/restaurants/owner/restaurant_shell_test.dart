@@ -14,6 +14,7 @@ import 'package:ada_rasa_foods/features/orders/presentation/board/restaurant_ord
 import 'package:ada_rasa_foods/features/restaurants/domain/restaurant.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/owner/my_restaurant_cubit.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/owner/restaurant_photo_cubit.dart';
+import 'package:ada_rasa_foods/features/restaurants/presentation/owner/owner_profile_page.dart';
 import 'package:ada_rasa_foods/features/restaurants/presentation/owner/restaurant_shell.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -234,7 +235,14 @@ void main() {
     await openTab(tester, 'Profile');
 
     expect(photoCover(), findsOneWidget);
-    expect(onScreen('Open for orders'), findsOneWidget);
+    // The Open card may be below the fold now, so we look in the page.
+    expect(
+      find.descendant(
+        of: find.byType(OwnerProfilePage),
+        matching: find.text('Open for orders'),
+      ),
+      findsOneWidget,
+    );
     expect(onScreen('Cheese Kottu'), findsNothing);
   });
 

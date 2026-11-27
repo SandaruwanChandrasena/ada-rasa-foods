@@ -121,28 +121,56 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  group('owner details', () {
-    testWidgets('shows the letter, name, role, email and phone',
+  group('Your account', () {
+    testWidgets('shows the name, role, email and phone as rows',
         (tester) async {
       await show(tester);
+      await tester.ensureVisible(find.text('owner@test.com'));
 
-      expect(find.text('Sandaruwan'), findsNothing);
+      expect(find.text('Your account'), findsOneWidget);
       expect(find.text('sandaruwan'), findsOneWidget);
-      expect(find.text('S'), findsOneWidget);
       expect(find.text('Restaurant owner'), findsOneWidget);
+      expect(find.text('Email'), findsOneWidget);
       expect(find.text('owner@test.com'), findsOneWidget);
+      expect(find.text('Your phone'), findsOneWidget);
       expect(find.text('071 234 5678'), findsOneWidget);
     });
 
-    testWidgets('no phone line when the owner has no phone',
+    testWidgets('the account rows are in InfoRow style, with no ">"',
+        (tester) async {
+      await show(tester);
+
+      final emailRow = find.ancestor(
+        of: find.text('owner@test.com'),
+        matching: find.byType(InfoRow),
+      );
+      expect(emailRow, findsOneWidget);
+      expect(tester.widget<InfoRow>(emailRow).onTap, isNull);
+      expect(
+        find.descendant(
+          of: emailRow,
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('no phone row when the owner has no phone',
         (tester) async {
       when(() => authCubit.state)
           .thenReturn(const AuthState.authenticated(ownerNoPhone));
 
       await show(tester);
 
-      expect(find.byIcon(Icons.phone_rounded), findsNothing);
-      expect(find.byIcon(Icons.email_rounded), findsOneWidget);
+      expect(find.text('Your phone'), findsNothing);
+      expect(find.text('owner@test.com'), findsOneWidget);
+    });
+
+    testWidgets('the old orange letter card is gone', (tester) async {
+      await show(tester);
+
+      expect(find.byType(CircleAvatar), findsNothing);
+      expect(find.text('S'), findsNothing);
     });
 
     testWidgets('shows the restaurant photo card', (tester) async {
@@ -186,6 +214,7 @@ void main() {
       when(() => myRestaurant.state).thenReturn(loaded(closedShop));
       await show(tester);
 
+      await tester.ensureVisible(find.byType(Switch));
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
 
@@ -197,6 +226,7 @@ void main() {
         (tester) async {
       await show(tester);
 
+      await tester.ensureVisible(find.byType(Switch));
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
 
@@ -213,6 +243,7 @@ void main() {
         (tester) async {
       await show(tester);
 
+      await tester.ensureVisible(find.byType(Switch));
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Close'));

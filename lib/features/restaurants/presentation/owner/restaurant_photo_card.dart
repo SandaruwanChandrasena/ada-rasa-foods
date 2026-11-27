@@ -23,7 +23,7 @@ void openEditShop(BuildContext context, Restaurant restaurant) {
 }
 
 // The big restaurant cover photo on the owner's Profile tab (RES-3),
-// with its buttons under it, then the shop details and an Edit pill.
+// with its buttons under it, then the Shop details rows.
 // The live photo comes from MyRestaurantCubit.
 class RestaurantPhotoCard extends StatelessWidget {
   const RestaurantPhotoCard({super.key, this.onEditShop = openEditShop});
@@ -88,35 +88,10 @@ class RestaurantPhotoCard extends StatelessWidget {
                   ],
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          restaurant.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppTheme.textDark,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${restaurant.cuisine} · ${restaurant.address}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: AppTheme.textMuted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  const Expanded(child: SectionTitle('Shop details')),
                   _Pill(
                     key: const Key('edit-shop-button'),
                     icon: Icons.edit_rounded,
@@ -127,34 +102,61 @@ class RestaurantPhotoCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (restaurant.hasPhone) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.phone_rounded,
-                      size: 18,
-                      color: AppTheme.brandOrange,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      PhoneChecks.format(restaurant.phone),
-                      style: const TextStyle(color: AppTheme.textDark),
-                    ),
-                  ],
-                ),
-              ],
-              if (restaurant.description.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  restaurant.description,
-                  style: const TextStyle(color: AppTheme.textMuted),
-                ),
-              ],
+              const SizedBox(height: 10),
+              _details(context, restaurant),
             ],
           ),
         );
       },
+    );
+  }
+
+  // Every row opens Edit shop, except the address (admin only).
+  Widget _details(BuildContext context, Restaurant restaurant) {
+    void edit() => onEditShop(context, restaurant);
+
+    return RowsCard(
+      children: [
+        InfoRow(
+          key: const Key('shop-row-name'),
+          icon: Icons.storefront_rounded,
+          label: 'Shop name',
+          value: restaurant.name,
+          onTap: edit,
+        ),
+        InfoRow(
+          key: const Key('shop-row-cuisine'),
+          icon: Icons.restaurant_rounded,
+          label: 'Cuisine',
+          value: restaurant.cuisine,
+          onTap: edit,
+        ),
+        InfoRow(
+          key: const Key('shop-row-phone'),
+          icon: Icons.phone_rounded,
+          label: 'Phone',
+          value: restaurant.hasPhone
+              ? PhoneChecks.format(restaurant.phone)
+              : null,
+          onTap: edit,
+        ),
+        InfoRow(
+          key: const Key('shop-row-description'),
+          icon: Icons.notes_rounded,
+          label: 'Description',
+          value: restaurant.description.isEmpty
+              ? null
+              : restaurant.description,
+          onTap: edit,
+        ),
+        InfoRow(
+          key: const Key('shop-row-address'),
+          icon: Icons.location_on_rounded,
+          label: 'Address',
+          value: restaurant.address,
+          locked: true,
+        ),
+      ],
     );
   }
 
@@ -386,6 +388,156 @@ class _Pill extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+// A bold title over a card, like "Shop details".
+class SectionTitle extends StatelessWidget {
+  const SectionTitle(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: AppTheme.textDark,
+        fontSize: 17,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+// A white card with thin lines between its rows.
+class RowsCard extends StatelessWidget {
+  const RowsCard({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppTheme.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                thickness: 1,
+                indent: 68,
+                color: AppTheme.border,
+              ),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// One row: a round icon, a bold label and the value under it.
+// With onTap it shows ">". Locked rows are grey with a lock.
+class InfoRow extends StatelessWidget {
+  const InfoRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+    this.locked = false,
+  });
+
+  static const Color lockedBg = Color(0xFFF2F2F2);
+
+  final IconData icon;
+  final String label;
+
+  // Null shows "Not set".
+  final String? value;
+  final VoidCallback? onTap;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = value;
+
+    final Widget? trailing;
+    if (locked) {
+      trailing = const Icon(
+        Icons.lock_rounded,
+        size: 18,
+        color: AppTheme.textMuted,
+      );
+    } else if (onTap != null) {
+      trailing = const Icon(
+        Icons.chevron_right_rounded,
+        color: AppTheme.textMuted,
+      );
+    } else {
+      trailing = null;
+    }
+
+    return InkWell(
+      onTap: locked ? null : onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: locked ? lockedBg : AppTheme.softOrange,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: locked ? AppTheme.textMuted : AppTheme.brandOrange,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppTheme.textDark,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    text ?? 'Not set',
+                    style: TextStyle(
+                      color: text == null
+                          ? AppTheme.textMuted.withValues(alpha: 0.7)
+                          : AppTheme.textMuted,
+                      fontStyle:
+                          text == null ? FontStyle.italic : FontStyle.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              trailing,
+            ],
+          ],
         ),
       ),
     );

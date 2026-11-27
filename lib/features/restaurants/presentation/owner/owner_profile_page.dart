@@ -9,8 +9,8 @@ import '../../../auth/presentation/auth_cubit.dart';
 import 'my_restaurant_cubit.dart';
 import 'restaurant_photo_card.dart';
 
-// The owner's Profile tab: restaurant photo, Open switch, owner details,
-// and Sign out.
+// The owner's Profile tab: restaurant photo, Shop details, Open switch,
+// Your account, and Sign out.
 class OwnerProfilePage extends StatelessWidget {
   const OwnerProfilePage({super.key});
 
@@ -30,8 +30,12 @@ class OwnerProfilePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const OpenForOrdersCard(),
-                const SizedBox(height: 16),
-                if (user != null) _OwnerCard(user: user),
+                if (user != null) ...[
+                  const SizedBox(height: 24),
+                  const SectionTitle('Your account'),
+                  const SizedBox(height: 10),
+                  _AccountRows(user: user),
+                ],
                 const SizedBox(height: 28),
                 TextButton.icon(
                   style: TextButton.styleFrom(
@@ -194,100 +198,36 @@ class OpenForOrdersCard extends StatelessWidget {
   }
 }
 
-// The owner's name, email and phone, in a soft orange card.
-class _OwnerCard extends StatelessWidget {
-  const _OwnerCard({required this.user});
+// The owner's name, email and phone, as rows like Shop details.
+// They can't be changed here, so the rows have no ">".
+class _AccountRows extends StatelessWidget {
+  const _AccountRows({required this.user});
 
   final AppUser user;
 
   @override
   Widget build(BuildContext context) {
     final name = user.name.trim();
-    final letter = name.isEmpty ? '?' : name[0].toUpperCase();
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.softOrange,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: AppTheme.brandOrange,
-            child: Text(
-              letter,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    return RowsCard(
+      children: [
+        InfoRow(
+          icon: Icons.person_rounded,
+          label: name.isEmpty ? 'No name' : name,
+          value: 'Restaurant owner',
+        ),
+        InfoRow(
+          icon: Icons.email_rounded,
+          label: 'Email',
+          value: user.email,
+        ),
+        if (user.phone.isNotEmpty)
+          InfoRow(
+            icon: Icons.smartphone_rounded,
+            label: 'Your phone',
+            value: PhoneChecks.format(user.phone),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name.isEmpty ? 'No name' : name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.textDark,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Text(
-                  'Restaurant owner',
-                  style: TextStyle(
-                    color: AppTheme.deepOrange,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _InfoLine(icon: Icons.email_rounded, text: user.email),
-                if (user.phone.isNotEmpty)
-                  _InfoLine(
-                    icon: Icons.phone_rounded,
-                    text: PhoneChecks.format(user.phone),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppTheme.brandOrange),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppTheme.textDark),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

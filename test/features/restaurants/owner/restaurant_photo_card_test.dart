@@ -177,11 +177,53 @@ void main() {
     expect(tester.getSize(photoBox()).height, 180);
   });
 
-  testWidgets('shows the name, cuisine and address', (tester) async {
+  Finder row(String name) => find.byKey(Key('shop-row-$name'));
+
+  Finder textIn(String name, String text) =>
+      find.descendant(of: row(name), matching: find.text(text));
+
+  testWidgets('Shop details shows each detail in its own row',
+      (tester) async {
     await show(tester, restaurant: noPhoto);
 
-    expect(find.text('Kottu Corner'), findsOneWidget);
-    expect(find.text('Sri Lankan · Colombo'), findsOneWidget);
+    expect(find.text('Shop details'), findsOneWidget);
+    expect(textIn('name', 'Shop name'), findsOneWidget);
+    expect(textIn('name', 'Kottu Corner'), findsOneWidget);
+    expect(textIn('cuisine', 'Cuisine'), findsOneWidget);
+    expect(textIn('cuisine', 'Sri Lankan'), findsOneWidget);
+    expect(textIn('address', 'Address'), findsOneWidget);
+    expect(textIn('address', 'Colombo'), findsOneWidget);
+  });
+
+  testWidgets('the rows go down in order, under the photo', (tester) async {
+    await show(tester, restaurant: noPhoto);
+
+    final tops = [
+      for (final name in ['name', 'cuisine', 'phone', 'description'])
+        tester.getRect(row(name)).top,
+      tester.getRect(row('address')).top,
+    ];
+    expect(tops.first, greaterThan(tester.getRect(photoBox()).bottom));
+    for (var i = 1; i < tops.length; i++) {
+      expect(tops[i], greaterThan(tops[i - 1]));
+    }
+  });
+
+  testWidgets('an empty phone and description say Not set',
+      (tester) async {
+    await show(tester, restaurant: noPhoto);
+
+    expect(textIn('phone', 'Not set'), findsOneWidget);
+    expect(textIn('description', 'Not set'), findsOneWidget);
+  });
+
+  testWidgets('shows the phone in groups and the description',
+      (tester) async {
+    await show(tester, restaurant: withDetails);
+
+    expect(textIn('phone', '071 234 5678'), findsOneWidget);
+    expect(textIn('description', 'Best kottu in town.'), findsOneWidget);
+    expect(find.text('Not set'), findsNothing);
   });
 
   testWidgets('the Edit pill opens Edit shop for this shop', (tester) async {
@@ -194,21 +236,49 @@ void main() {
     expect(editOpened, [noPhoto]);
   });
 
-  testWidgets('shows the phone in groups and the description',
-      (tester) async {
-    await show(tester, restaurant: withDetails);
+  testWidgets('tapping a detail row opens Edit shop too', (tester) async {
+    await show(tester, restaurant: noPhoto);
 
-    expect(find.text('071 234 5678'), findsOneWidget);
-    expect(find.byIcon(Icons.phone_rounded), findsOneWidget);
-    expect(find.text('Best kottu in town.'), findsOneWidget);
+    for (final name in ['name', 'cuisine', 'phone', 'description']) {
+      await tester.ensureVisible(row(name));
+      await tester.tap(row(name));
+      await tester.pump();
+    }
+
+    expect(editOpened, hasLength(4));
+    expect(
+      find.descendant(
+        of: row('name'),
+        matching: find.byIcon(Icons.chevron_right_rounded),
+      ),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('no phone line and no description when empty',
+  testWidgets('the address is grey with a lock and does not open',
       (tester) async {
     await show(tester, restaurant: noPhoto);
 
-    expect(find.byIcon(Icons.phone_rounded), findsNothing);
-    expect(find.text('Best kottu in town.'), findsNothing);
+    expect(
+      find.descendant(
+        of: row('address'),
+        matching: find.byIcon(Icons.lock_rounded),
+      ),
+      findsOneWidget,
+    );
+    final pin = tester.widget<Icon>(
+      find.descendant(
+        of: row('address'),
+        matching: find.byIcon(Icons.location_on_rounded),
+      ),
+    );
+    expect(pin.color, AppTheme.textMuted);
+
+    await tester.ensureVisible(row('address'));
+    await tester.tap(row('address'));
+    await tester.pump();
+
+    expect(editOpened, isEmpty);
   });
 
   testWidgets('a very long name does not overflow', (tester) async {
