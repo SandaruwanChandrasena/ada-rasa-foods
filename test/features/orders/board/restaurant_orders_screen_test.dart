@@ -1,3 +1,4 @@
+import 'package:ada_rasa_foods/core/theme/app_theme.dart';
 import 'package:ada_rasa_foods/features/auth/domain/app_user.dart';
 import 'package:ada_rasa_foods/features/auth/domain/user_role.dart';
 import 'package:ada_rasa_foods/features/auth/presentation/auth_cubit.dart';
@@ -164,6 +165,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Color? chipColor(WidgetTester tester, String label) {
+    return tester
+        .widget<Material>(
+          find.ancestor(of: find.text(label), matching: find.byType(Material))
+              .first,
+        )
+        .color;
+  }
+
   testWidgets('says so when no restaurant is linked', (tester) async {
     phoneSize(tester);
 
@@ -178,6 +188,21 @@ void main() {
       find.text('No restaurant is linked to your account. Ask the admin.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('with no restaurant, Sign out is still in the top bar',
+      (tester) async {
+    phoneSize(tester);
+    await tester.pumpWidget(
+      BlocProvider<AuthCubit>.value(
+        value: authCubit,
+        child: const MaterialApp(home: RestaurantOrdersScreen()),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Sign out'));
+
+    verify(() => authCubit.signOut()).called(1);
   });
 
   testWidgets('shows a spinner while loading', (tester) async {
@@ -218,9 +243,41 @@ void main() {
       ),
     );
 
-    expect(find.text('New (2)'), findsOneWidget);
-    expect(find.text('Active (1)'), findsOneWidget);
+    expect(find.text('New 2'), findsOneWidget);
+    expect(find.text('Active 1'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
+  });
+
+  testWidgets('the New chip is orange first', (tester) async {
+    await showBoard(tester, loaded());
+
+    expect(chipColor(tester, 'New'), AppTheme.brandOrange);
+    expect(chipColor(tester, 'Active'), isNot(AppTheme.brandOrange));
+  });
+
+  testWidgets('tapping a chip opens its list and turns it orange',
+      (tester) async {
+    await showBoard(tester, loaded());
+
+    await openTab(tester, 'Active');
+
+    expect(find.text('No active orders.'), findsOneWidget);
+    expect(chipColor(tester, 'Active'), AppTheme.brandOrange);
+    expect(chipColor(tester, 'New'), isNot(AppTheme.brandOrange));
+  });
+
+  testWidgets('a swipe moves the orange chip too', (tester) async {
+    await showBoard(tester, loaded());
+
+    await tester.fling(
+      find.byType(TabBarView),
+      const Offset(-300, 0),
+      1000,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No active orders.'), findsOneWidget);
+    expect(chipColor(tester, 'Active'), AppTheme.brandOrange);
   });
 
   testWidgets('a new order shows its details', (tester) async {
@@ -412,12 +469,10 @@ void main() {
     expect(find.text('New order #XYZ789'), findsOneWidget);
   });
 
-  testWidgets('Sign out signs out', (tester) async {
+  testWidgets('the board top bar has no Sign out', (tester) async {
     await showBoard(tester, loaded());
 
-    await tester.tap(find.byTooltip('Sign out'));
-
-    verify(() => authCubit.signOut()).called(1);
+    expect(find.byTooltip('Sign out'), findsNothing);
   });
 
   testWidgets('the top bar shows the restaurant name', (tester) async {
@@ -434,7 +489,7 @@ void main() {
     await showBoard(tester, loaded());
 
     expect(find.text('Orders'), findsOneWidget);
-    expect(find.byType(Switch), findsNothing);
+    expect(find.byKey(const Key('open-pill')), findsNothing);
   });
 
   testWidgets('an open restaurant shows Open and no red strip',
@@ -442,11 +497,10 @@ void main() {
     await showBoard(tester, loaded());
 
     expect(find.text('Open'), findsOneWidget);
-    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
-    expect(find.text('Closed. Customers cannot order now.'), findsNothing);
+    expect(find.text('Closed. No new orders come.'), findsNothing);
   });
 
-  testWidgets('a closed restaurant shows Closed and a red strip',
+  testWidgets('a closed restaurant shows Closed and a red note',
       (tester) async {
     when(() => myRestaurant.state)
         .thenReturn(restaurantLoaded(isOpen: false));
@@ -454,31 +508,21 @@ void main() {
     await showBoard(tester, loaded());
 
     expect(find.text('Closed'), findsOneWidget);
-    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
-    expect(find.text('Closed. Customers cannot order now.'), findsOneWidget);
+    expect(find.text('Closed. No new orders come.'), findsOneWidget);
   });
 
-  testWidgets('tapping the switch closes the restaurant', (tester) async {
+  testWidgets('tapping Open asks, then Close closes the restaurant',
+      (tester) async {
     await showBoard(tester, loaded());
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byKey(const Key('open-pill')));
+    await tester.pumpAndSettle();
+    expect(find.text('Close now?'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Close'));
     await tester.pumpAndSettle();
 
     verify(() => myRestaurant.setOpen(false)).called(1);
-  });
-
-  testWidgets('the switch is locked while saving', (tester) async {
-    when(() => myRestaurant.state).thenReturn(
-      MyRestaurantState(
-        view: MyRestaurantView.loaded,
-        restaurant: kottu(),
-        isSaving: true,
-      ),
-    );
-
-    await showBoard(tester, loaded());
-
-    expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
   });
 
   testWidgets('a switch message shows in a bar', (tester) async {

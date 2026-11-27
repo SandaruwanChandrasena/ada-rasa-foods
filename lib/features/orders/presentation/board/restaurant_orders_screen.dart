@@ -12,12 +12,13 @@ import '../../../restaurants/presentation/owner/my_restaurant_cubit.dart';
 import '../../../restaurants/presentation/owner/restaurant_photo_cubit.dart';
 import '../../../restaurants/presentation/owner/restaurant_shell.dart';
 import '../../domain/food_order.dart';
+import 'board_top_bar.dart';
 import 'restaurant_order_card.dart';
 import 'restaurant_orders_cubit.dart';
 import 'restaurant_orders_state.dart';
 
 // The restaurant owner's home. Makes the cubits, then shows the
-// Orders and Menu tabs (RES-1 to RES-5).
+// Orders, Menu and Profile tabs (RES-1 to RES-5).
 class RestaurantOrdersScreen extends StatelessWidget {
   const RestaurantOrdersScreen({super.key});
 
@@ -75,8 +76,12 @@ class RestaurantOrdersView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
     return DefaultTabController(
       length: 3,
+      // Reduce animations: a chip tap jumps to its list.
+      animationDuration: reduceMotion ? Duration.zero : null,
       child: MultiBlocListener(
         listeners: [
           BlocListener<RestaurantOrdersCubit, RestaurantOrdersState>(
@@ -103,15 +108,13 @@ class RestaurantOrdersView extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             title: const _RestaurantName(),
-            actions: const [_OpenSwitch(), SignOutButton()],
-            bottom: const PreferredSize(
-              preferredSize: Size.fromHeight(kTextTabBarHeight),
-              child: _BoardTabs(),
-            ),
+            centerTitle: false,
+            actions: const [OpenPill(), SizedBox(width: 16)],
           ),
           body: Column(
             children: [
-              const _ClosedBanner(),
+              const ClosedNote(),
+              const BoardChips(),
               Expanded(child: _board()),
             ],
           ),
@@ -187,86 +190,6 @@ class _RestaurantName extends StatelessWidget {
   }
 }
 
-// "Open" or "Closed" with a switch (RES-4). Hidden until it loads.
-class _OpenSwitch extends StatelessWidget {
-  const _OpenSwitch();
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<MyRestaurantCubit>().state;
-    final restaurant = state.restaurant;
-    if (state.view != MyRestaurantView.loaded || restaurant == null) {
-      return const SizedBox.shrink();
-    }
-
-    final open = restaurant.isOpen;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          open ? 'Open' : 'Closed',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: open ? Colors.green.shade700 : Colors.red.shade700,
-          ),
-        ),
-        Switch(
-          value: open,
-          onChanged: state.canSwitch
-              ? (value) => context.read<MyRestaurantCubit>().setOpen(value)
-              : null,
-        ),
-      ],
-    );
-  }
-}
-
-// A red strip while closed, so the owner knows why no orders come.
-class _ClosedBanner extends StatelessWidget {
-  const _ClosedBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final closed = context.select(
-      (MyRestaurantCubit cubit) => cubit.state.restaurant?.isOpen == false,
-    );
-    if (!closed) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      color: Colors.red.shade50,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Text(
-        'Closed. Customers cannot order now.',
-        style: TextStyle(color: Colors.red.shade700),
-      ),
-    );
-  }
-}
-
-// "New (2)" and "Active (1)". Done has no count.
-class _BoardTabs extends StatelessWidget {
-  const _BoardTabs();
-
-  @override
-  Widget build(BuildContext context) {
-    final counts = context.select(
-      (RestaurantOrdersCubit cubit) => (
-        cubit.state.newOrders.length,
-        cubit.state.activeOrders.length,
-      ),
-    );
-
-    return TabBar(
-      tabs: [
-        Tab(text: counts.$1 == 0 ? 'New' : 'New (${counts.$1})'),
-        Tab(text: counts.$2 == 0 ? 'Active' : 'Active (${counts.$2})'),
-        const Tab(text: 'Done'),
-      ],
-    );
-  }
-}
-
 class _OrderList extends StatelessWidget {
   const _OrderList({
     required this.orders,
@@ -331,6 +254,7 @@ class _NoRestaurantView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // No Profile tab here, so Sign out stays in the top bar.
       appBar: AppBar(
         title: const Text('Orders'),
         actions: const [SignOutButton()],
